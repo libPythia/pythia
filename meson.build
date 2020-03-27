@@ -5,6 +5,8 @@ project(
   default_options : ['cpp_std=c++17', 'warning_level=3']
 )
 
+thread_dep = dependency('threads')
+
 include_directory='include'
 
 # For installation
@@ -17,24 +19,38 @@ else
     extra_args = ['-std=c++17']
 endif
 
+eta_trace_src = [
+    'src/dot_export.cpp',
+    'src/factorization.cpp',
+    'src/parents_tree.cpp',
+    'src/trace_to_string.cpp',
+]
+
 eta_trace_lib = static_library('eta_trace',
-                              ['src/trace.cpp'],
-                              cpp_args:extra_args,
-                              include_directories:[include_directory])
+                               eta_trace_src,
+                               cpp_args:extra_args,
+                               include_directories:[include_directory])
 
 eta_trace_dep = declare_dependency(include_directories:[include_directory],
-                                  link_with:[eta_trace_lib],
-                                  compile_args:extra_args)
+                                   link_with:[eta_trace_lib],
+                                   compile_args:extra_args)
 
-eta_trace_merge = executable('eta_trace_factorize',
-                            'src/main.cpp',
-                            dependencies:[eta_trace_dep])
+eta_trace_factorize = executable('factorize',
+                                 'src/factorize.cpp',
+                                 dependencies:[eta_trace_dep])
+
+eta_trace_fuzzy_test = executable('fuzzy_test',
+                                  'src/fuzzy_test.cpp',
+                                  dependencies:[eta_trace_dep, thread_dep])
+
+eta_trace_fuzzy_bench = executable('fuzzy_bench',
+                                   'src/bench.cpp',
+                                   dependencies:[eta_trace_dep, thread_dep])
 
 # Testing
 test_files=[
     'chunk_vector.cpp',
     'parents_tree.cpp',
-    'trace.cpp',
     'vector.cpp',
 ]
 

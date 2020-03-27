@@ -11,17 +11,18 @@ struct GenericAllocator {
 
 template <typename Allocator> class AllocatorAdaptator : public GenericAllocator {
   public:
-    auto alloc(std::size_t s) -> void * { return _allocator.alloc(s); }
-    auto dealloc(void * p) -> void { return _allocator.dealloc(p); }
-    auto realloc(void * p, std::size_t s) -> void * { return _allocator.realloc(p, s); }
+    auto alloc(std::size_t s) -> void * override { return _allocator.alloc(s); }
+    auto dealloc(void * p) -> void override { return _allocator.dealloc(p); }
+    auto realloc(void * p, std::size_t s) -> void * override { return _allocator.realloc(p, s); }
 
   private:
     Allocator & _allocator;
 };
 
-struct StdAllocator {
-    auto alloc(std::size_t s) -> void * { return std::malloc(s); }
-    auto dealloc(void * p) -> void { std::free(p); }
-    auto realloc(void * p, std::size_t s) -> void * { return std::realloc(p, s); }
+struct StdAllocator : public GenericAllocator {
+    auto alloc(std::size_t s) -> void * override { return std::malloc(s); }
+    auto dealloc(void * p) -> void override { std::free(p); }
+    auto realloc(void * p, std::size_t s) -> void * override { return std::realloc(p, s); }
 };
 
+inline StdAllocator std_allocator;

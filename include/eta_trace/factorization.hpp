@@ -1,219 +1,168 @@
 #pragma once
+#include <iostream>
 
-#include "trace_edition.hpp"
+#include "impl/trace_edition.hpp"
 
-template <typename Allocator>
-auto searchParentPattern(Trace<Allocator> const & trace,
-                         NodeId last_id,
-                         NodeId next_id,
-                         NodeId excepted = NodeId::invalid()) -> NodeId {
-    auto const last_son_id = trace[last_id].son();
+auto searchParentPattern(Node * last, Node * next) -> Node *;
+auto getLastPatternNode(Node * node) -> Node *;
 
-    if (last_son_id.isValid()) {
-        auto const parent_id = trace[last_son_id].parents[next_id];
-        if (parent_id.isValid()) {
-            auto const & parent = trace[parent_id];
-            if (parent.next.isValid()) {
-                if (trace[parent.next].son() == next_id &&
-                    (!excepted.isValid() || parent.next != excepted)) {
-                    return parent_id;
-                }
-            }
-        }
-    }
+#ifndef ETA_FACTO_PRINT
+#    define ETA_FACTO_PRINT(args)
+#endif
+// std::cerr << ((args))
 
-    return NodeId::invalid();
-}
+enum Side {
+    RightSide,
+    LeftSide,
+};
 
-// No need of isTrivialNode and simplifyTrivialNode ?
+template <Side side, typename Allocator>
+auto splitLoop(Trace<Allocator> & trace, Node * loop, std::size_t count) -> Node * {
+    assert(loop != nullptr);
+    assert(count > 0u);
+    assert(!loop->isLeaf());
 
-template <typename Allocator>
-auto getLastPatternNode(Trace<Allocator> const & trace, NodeId id) -> NodeId {
-    auto last_id = NodeId::invalid();
+    auto const loop_count = loop->loop();
+    assert(loop_count > count);
 
-    while (id.isValid()) {
-        last_id = id;
-        id = trace[id].next;
-    }
-    return last_id;
-}
+    auto const node = trace.newNode();
+    if (loop->next != nullptr)
+        transferNext(loop, node);
+    setNext(loop, node);
 
-template <typename Allocator>
-auto factorizeLoop(Trace<Allocator> & trace, NodeId last_id) -> NodeId {
-    auto & last = trace[last_id];
-    auto const previous_id = last.previous;
-    auto & previous = trace[previous_id];
-
-    auto const previous_son_id = previous.son();
-    assert(previous_son_id.isValid());
-    if (last.son() == previous_son_id) {
-        removeNext(trace, previous_id, last_id);
-        previous.setLoop(previous.loop() + last.loop());
-
-        detachAndReleaseNode(trace, last_id);
-
-        return previous_id;
+    if constexpr (side == LeftSide) {
+        loop->setLoop(count);
+        setSon(trace.allocator(), node, loop->son(), loop_count - count);
+        return loop;
     } else {
-        return last_id;
+        loop->setLoop(loop_count - count);
+        setSon(trace.allocator(), node, loop->son(), count);
+        return node;
     }
 }
 
 template <typename Allocator>
-auto insertNode(Trace<Allocator> & trace, NodeId next_id, NodeId last_id) -> NodeId {
-    assert(next_id.isValid());
-    assert(last_id.isValid());
-    // auto & next = trace[next_id];
-    auto pLast = &trace[last_id];
+auto insertNode(Trace<Allocator> & trace, Node * next, Node * last) -> Node * {
+    assert(next != nullptr);
+    assert(last != nullptr);
+    assert(last->next == nullptr);
+    assert(!last->isLeaf());
 
-    auto const last_son_id = pLast->son();
-    if (/*last_son_id.isValid() && */ last_son_id == next_id) {  // Implicit if last_son_id is valid
-        pLast->setLoop(pLast->loop() + 1);
-        return last_id;
-    } else {
-        auto parent_id = searchParentPattern(trace, last_id, next_id);
-        if (!parent_id.isValid()) {
-            auto const new_id = trace.newNode();
-            setNext(trace, last_id, new_id);
-            setSon(trace, new_id, next_id);
-            return new_id;
+    ////////////////////////////////
+    // short exit : factorize loop
+
+    if (last->son() == next) {
+        ETA_FACTO_PRINT("Loop");
+        last->setLoop(last->loop() + 1);
+        return last;
+    }
+
+    //////////////////////////////////////
+    // short exit : nothing to factorize
+
+    auto parent = searchParentPattern(last, next);
+    if (parent == nullptr) {
+        ETA_FACTO_PRINT("Append");
+        return appendOccurence(trace, last, next);
+    }
+
+    //////////////////////////
+    // split loops if needed
+
+    assert(last->previous != nullptr);
+
+    // if (parent->loop() > 1)
+    //     parent = splitLoop<RightSide>(trace, parent, 1);
+    // if (last->loop() > 1)
+    //     last = splitLoop<RightSide>(trace, last, 1);
+    if (parent->next->loop() > 1)
+        splitLoop<LeftSide>(trace, parent->next, 1);
+
+    auto const parent_loop = parent->loop();
+    auto const last_loop = last->loop();
+    if (last_loop > parent_loop)
+        last = splitLoop<RightSide>(trace, last, parent_loop);
+    else if (parent_loop > last_loop)
+        parent = splitLoop<RightSide>(trace, parent, last_loop);
+    assert(parent->loop() == last->loop());
+
+    auto const parent_son = parent->son();
+    auto const previous = last->previous;
+
+    ///////////////////////////////////////
+    // Can an existing pattern be reused?
+
+    // Can an existing pattern be extended ?
+    if (!parent_son->isLeaf() &&  // pattern to extend
+        parent_son->parents.size() <= 2 &&  // two parents : parent and last
+        parent->loop() == 1u && last->loop() == 1) {  // cannot extend the pattern if it
+                                                      // repeats
+
+        auto const last_pattern_node = getLastPatternNode(parent_son);
+        auto const parent_next = parent->next;
+
+        removeNext(previous);
+        removeSon(last);
+        trace.releaseNode(last);
+
+        removeNext(parent);
+        removeSon(parent_next);
+        if (parent->parents.size() > 0u && parent_next->next == nullptr) {
+            ETA_FACTO_PRINT("Merge");
+            trace.releaseNode(parent_next);
+            removeSon(parent);
+            transferNext(parent_son, parent);
+            transferValueOrSon(trace, parent_son, parent);
+            trace.releaseNode(parent_son);
+            insertNode(trace, next, last_pattern_node);
+            return insertNode(trace, parent, previous == parent_next ? parent : previous);
         } else {
-            auto pParent = &trace[parent_id];
+            ETA_FACTO_PRINT("Extend");
+            if (parent_next != nullptr)
+                transferNext(parent_next, parent);
+            trace.releaseNode(parent_next);
 
-            // ------------------------
-            // Equalize loops if needed
-
-            {
-                auto & parent_next = trace[pParent->next];
-                auto const parent_next_loop = parent_next.loop();
-
-                if (parent_next_loop > 1u) {
-                    auto const new_node_id = trace.newNode();
-                    parent_next.setLoop(parent_next_loop - 1u);
-                    setSon(trace, new_node_id, parent_next.son());
-                    transferNext(trace, parent_id, new_node_id);
-                    setNext(trace, parent_id, new_node_id);
-                }
-            }
-
-            {
-                auto const parent_loop_count = pParent->loop();
-                auto const last_loop_count = pLast->loop();
-                if (parent_loop_count < last_loop_count) {
-                    auto const new_node_id = trace.newNode();
-                    auto & new_node = trace[new_node_id];
-                    new_node.setLoop(last_loop_count);
-                    pParent->setLoop(parent_loop_count - last_loop_count);
-                    setSon(trace, new_node_id, pParent->son());
-                    transferNext(trace, parent_id, new_node_id);
-                    setNext(trace, parent_id, new_node_id);
-                    parent_id = new_node_id;
-                    pParent = &new_node;
-                } else if (last_loop_count < parent_loop_count) {
-                    auto const new_node_id = trace.newNode();
-                    auto & new_node = trace[new_node_id];
-                    new_node.setLoop(parent_loop_count);
-                    pLast->setLoop(last_loop_count - parent_loop_count);
-                    setSon(trace, new_node_id, pLast->son());
-                    setNext(trace, last_id, new_node_id);
-                    last_id = new_node_id;
-                    pLast = &new_node;
-                }
-            }
-            assert(pParent->loop() == pLast->loop());
-
-            // -----------------
-            // Factorize pattern
-
-            auto const last_pattern_node_id = getLastPatternNode(trace, pParent->son());
-            auto const parent_son_id = pParent->son();
-            auto & parent_son = trace[parent_son_id];
-            if (!pParent->previous.isValid() && !trace[pParent->next].next.isValid()) {
-                if (pParent->loop() == 1u && parent_son.son().isValid() &&
-                    parent_son.parents.size() == 1) {
-                    // Identify larger known pattern, merge previous
-                    // TODO simplify loop construction
-                    auto const parent_next_id = pParent->next;
-                    removeNext(trace, parent_id, parent_next_id);
-                    removeSon(trace, parent_id, parent_son_id);
-                    transferValueOrSon(trace, parent_son_id, parent_id);
-                    transferNext(trace, parent_son_id, parent_id);
-                    pParent->setLoop(parent_son.loop());
-
-                    removeSon(trace, last_id, parent_son_id);
-                    trace.releaseNode(parent_son_id);
-
-                    detachAndReleaseNode(trace, parent_next_id);
-                    detachAndReleaseNode(trace, last_id);
-
-                    insertNode(trace, sonId(trace, parent_next_id), last_pattern_node_id);
-                    return insertNode(trace, parent_id, pLast->previous);
-                } else {
-                    // Identify larger known pattern, keep previous
-                    auto const previous_id = pLast->previous;
-                    removeNext(trace, previous_id, last_id);
-                    removeSon(trace, last_id, pLast->son());
-                    trace.releaseNode(last_id);
-                    return insertNode(trace, parent_id, previous_id);
-                }
-            } else {
-                if (!parent_son.isLeaf() && parent_son.parents.size() == 2 && pParent->loop() == 1u) {
-                    auto const parent_next_id = pParent->next;
-                    auto & last_pattern_node = trace[last_pattern_node_id];
-
-                    if (last_pattern_node.son() == sonId(trace, parent_next_id)) {
-                        // Extend node, keeping previous 2
-                        removeNext(trace, parent_id, parent_next_id);
-                        transferNext(trace, parent_next_id, parent_id);
-                        removeSon(trace, parent_next_id, sonId(trace, parent_next_id));
-                        trace.releaseNode(parent_next_id);
-                        last_pattern_node.setLoop(last_pattern_node.loop() + 1);
-                    } else {
-                        if (pParent->loop() > 1u) {
-                            // Extend node, keeping previous 3
-                            auto const new_node_id = trace.newNode();
-                            auto & new_node = trace[new_node_id];
-                            new_node.setLoop(pParent->loop());
-                            pParent->setLoop(1);
-                            pLast->setLoop(1);
-
-                            changeSon(trace, parent_id, new_node_id);
-                            changeSon(trace, last_id, new_node_id);
-                            setSon(trace, new_node_id, pParent->son());
-
-                            transferNext(trace, pParent->next, parent_id, new_node_id);
-                        } else {
-                            // Extend node, keeping previous 4
-                            transferNext(trace, pParent->next, parent_id, last_pattern_node_id);
-                        }
-                    }
-                } else {
-                    // Create new pattern
-                    auto const new_node_id = trace.newNode();
-                    auto & new_node = trace[new_node_id];
-                    transferValueOrSon(trace, parent_id, new_node_id);
-                    new_node.setLoop(pParent->loop());
-                    pParent->setLoop(1);
-                    pLast->setLoop(1);
-                    transferNext(trace, pParent->next, new_node_id);
-                    setSon(trace, parent_id, new_node_id);
-                    changeSon(trace, last_id, new_node_id);
-                }
-                return factorizeLoop(trace, last_id);
-            }
+            insertNode(trace, next, last_pattern_node);
+            return insertNode(trace, parent_son, previous == parent_next ? parent : previous);
         }
     }
+
+    if (parent->previous == nullptr && parent->next->next == nullptr) {
+        ETA_FACTO_PRINT("Reuse");
+        removeNext(previous);
+        removeSon(last);
+        trace.releaseNode(last);
+        return insertNode(trace, parent, previous);
+    }
+
+    /////////////////////////
+    // Create a new pattern
+
+    ETA_FACTO_PRINT("Create");
+    // last will be reused for the new pattern
+    removeNext(previous);
+    removeSon(last);
+
+    transferValueOrSon(trace, parent, last);
+    transferNext(parent, last);
+    if (last->next->next != nullptr)  // TODO useful ?
+        transferNext(last->next, parent);
+
+    setSon(trace.allocator(), parent, last, 1u);
+    return insertNode(trace, last, previous == last->next ? parent : previous);
 }
 
 template <typename Allocator> class TraceBuilder final {
   public:
     auto newLeaf() { return _trace.newLeaf(); }
     auto insert(LeafId leaf_id) -> void {
-        if (_last.isValid()) {
+        if (_last != nullptr) {
             auto const node_id = _trace[leaf_id];
             _last = insertNode(_trace, node_id, _last);
         } else {
+            ETA_FACTO_PRINT("Init");
             _last = _trace.newNode();
-            setSon(_trace, _last, _trace[leaf_id]);
+            setSon(_trace.allocator(), _last, _trace[leaf_id], 1u);
             _trace.setRoot(_last);
         }
     }
@@ -222,5 +171,5 @@ template <typename Allocator> class TraceBuilder final {
 
   private:
     Trace<Allocator> _trace;
-    NodeId _last = NodeId::invalid();
+    Node * _last = nullptr;
 };

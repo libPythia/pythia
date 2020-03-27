@@ -1,21 +1,45 @@
+#pragma once
+
 #include <cstdint>
 #include <tuple>
 
-#include "chunk_vector.hpp"
-#include "ids.hpp"
-#include "parents_tree.hpp"
-#include "vector.hpp"
+#include "impl/chunk_vector.hpp"
+#include "impl/parents_tree.hpp"
+#include "impl/vector.hpp"
 
 // -----------------------------------------------------------
+
+struct LeafId {
+  public:
+    using underlying_t = unsigned int;
+
+  public:
+    constexpr LeafId(underlying_t v)
+          : _value(v) {}
+
+    auto value() const { return _value; }
+
+    auto operator<(LeafId o) const { return _value < o._value; }
+    auto operator==(LeafId o) const { return _value == o._value; }
+    auto operator!=(LeafId o) const { return _value != o._value; }
+
+  private:
+    underlying_t _value;
+};
+
+// -----------------------------------------------------------
+
+struct keep_previous_t {};
+static constexpr keep_previous_t keep_previous;
 
 class Node final {
   public:
     Node()
           : parents()
-          , previous(NodeId::invalid())
-          , next(NodeId::invalid())
+          , previous(nullptr)
+          , next(nullptr)
           , _loop(1u) {
-        _son = NodeId::invalid();
+        _son = nullptr;
     }
     Node(Node &&) = delete;
     Node(Node const &) = delete;
@@ -24,14 +48,14 @@ class Node final {
 
   public:
     Parents parents;
-    NodeId previous;
-    NodeId next;
+    Node * previous;
+    Node * next;
 
   public:
     auto isLeaf() const -> bool { return _loop == 0u; }
-    auto son() const -> NodeId {
+    auto son() const -> Node * {
         if (isLeaf())
-            return NodeId::invalid();
+            return nullptr;
         return _son;
     }
 
@@ -40,8 +64,19 @@ class Node final {
         return _value;
     }
 
-    auto setSon(NodeId id) -> void {
-        _son = id;
+    auto setSon(Node * node, std::size_t loop) -> void {
+        assert(loop > 0u);
+        _son = node;
+        _loop = loop;
+    }
+
+    auto setSon(Node * node, keep_previous_t) -> void {
+        assert(node != nullptr);
+        _son = node;
+    }
+
+    auto setSon(std::nullptr_t) -> void {
+        _son = nullptr;
         _loop = 1u;
     }
 
@@ -64,7 +99,7 @@ class Node final {
 
   private:
     union {
-        NodeId _son;
+        Node * _son;
         LeafId _value;
     };
     std::uint32_t _loop;
@@ -74,56 +109,46 @@ class Node final {
 
 template <typename Allocator> class Trace final {
   public:
-    auto operator[](NodeId id) -> Node & {
-        assert(id.isValid());
-        return _nodes[id.value()];
-    }
+    auto operator[](std::size_t index) const -> Node const & { return _nodes[index]; }
+    auto operator[](LeafId id) const -> Node * { return _leafs[id.value()]; }
 
-    auto operator[](NodeId id) const -> Node const & {
-        assert(id.isValid());
-        return _nodes[id.value()];
-    }
+    auto setLeaf(LeafId id, Node * node) -> void { _leafs[id.value()] = node; }
 
-    auto operator[](LeafId id) const -> NodeId { return _leafs[id.value()]; }
-
-    auto setLeaf(LeafId leaf_id, NodeId node_id) -> void { _leafs[leaf_id.value()] = node_id; }
-
-    auto releaseNode(NodeId id) -> void {
-        assert(_nodes[id.value()].parents.size() == 0u);
-        assert(!_nodes[id.value()].next.isValid());
-        assert(!_nodes[id.value()].previous.isValid());
-        assert(!_nodes[id.value()].isLeaf());
-        assert(!_nodes[id.value()].son().isValid());
-        _free_nodes.push_back(_allocator, id);
+    auto releaseNode(Node * pNode) -> void {
+        assert(pNode->parents.size() == 0u);
+        assert(pNode->next == nullptr);
+        assert(pNode->previous == nullptr);
+        assert(!pNode->isLeaf());
+        assert(pNode->son() == nullptr);
+        _free_nodes.push_back(_allocator, pNode);
     }
 
     auto allocator() -> Allocator & { return _allocator; }
 
-    auto newNode() -> NodeId {
+    auto newNode() -> Node * {
         if (_free_nodes.size() > 0) {
             auto const res = _free_nodes.back();
             _free_nodes.pop_back();
             return res;
         } else {
-            auto const res = NodeId(_nodes.size());
             _nodes.push_back(_allocator);
-            return res;
+            return &_nodes.back();
         }
     }
 
     auto newLeaf() -> LeafId {
-        auto const node_id = newNode();
+        auto const node = newNode();
         auto const leaf_id = LeafId(_leafs.size());
-        _leafs.push_back(_allocator, node_id);
-        operator[](node_id).setLeaf(leaf_id);
+        _leafs.push_back(_allocator, node);
+        node->setLeaf(leaf_id);
         return leaf_id;
     }
 
-    auto root() const { return _root; }
-    auto setRoot(NodeId id) {
-        assert(!_root.isValid());
-        assert(id.isValid());
-        _root = id;
+    auto root() const -> Node const * { return _root; }
+    auto setRoot(Node * pNode) {
+        assert(_root == nullptr);
+        assert(pNode != nullptr);
+        _root = pNode;
     }
 
     auto nodeCount() const { return _nodes.size(); }
@@ -140,9 +165,8 @@ template <typename Allocator> class Trace final {
 
   private:
     chunk_vector<Node, 128> _nodes;
-    vector<NodeId> _free_nodes;
-    vector<NodeId> _leafs;
+    vector<Node *> _free_nodes;
+    vector<Node *> _leafs;
     Allocator _allocator;
-    NodeId _root = NodeId::invalid();
+    Node * _root = nullptr;
 };
-

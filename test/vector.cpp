@@ -1,4 +1,4 @@
-#include "eta_trace/vector.hpp"
+#include "eta_trace/impl/vector.hpp"
 
 #include <cassert>
 #include <iostream>

@@ -1,4 +1,4 @@
-#include "eta_trace/chunk_vector.hpp"
+#include "eta_trace/impl/chunk_vector.hpp"
 
 #include <cassert>
 #include <iostream>

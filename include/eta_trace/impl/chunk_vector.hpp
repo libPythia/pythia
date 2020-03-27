@@ -90,6 +90,9 @@ template <typename T, std::size_t chunk_size> struct chunk_vector final {
         return _data[i / chunk_size][i % chunk_size];
     }
 
+    auto back() -> T & { return operator[](_size - 1); }
+    auto back() const -> T const & { return operator[](_size - 1); }
+
   private:
     vector<T *> _data;
     std::size_t _size;
