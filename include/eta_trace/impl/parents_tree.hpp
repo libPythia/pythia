@@ -8,7 +8,7 @@
 
 class Node;
 
-struct Parents {
+class Parents {
     struct pair {
         Node * key = nullptr;
         Node * value = nullptr;

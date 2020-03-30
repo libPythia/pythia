@@ -12,8 +12,8 @@
 #include "ProgramOptions.hxx"
 
 struct params {
-    unsigned int alphabet_size;
-    unsigned int trace_size;
+    long alphabet_size;
+    long trace_size;
 };
 
 auto parseRange(std::string const & str) -> std::tuple<long, long, long> {
@@ -44,18 +44,19 @@ auto parseRange(std::string const & str) -> std::tuple<long, long, long> {
 
     if (number_count == 0) {
         auto const n = std::stol(first);
-        return std::tuple(n, 1l, n);
+        return { n, 1l, n };
     } else if (number_count == 1) {
         if (second.empty())
             error();
-        return std::tuple(std::stol(first), 1l, std::stol(second));
+        return { std::stol(first), 1l, std::stol(second) };
     } else if (number_count == 2) {
         if (second.empty() || third.empty())
             error();
-        return std::tuple(std::stol(first), std::stol(second), std::stol(third));
+        return { std::stol(first), std::stol(second), std::stol(third) };
     } else {
         error();
     }
+    return { 0, 0, 0 };
 }
 
 auto main(int argc, char ** argv) -> int {
@@ -91,13 +92,14 @@ auto main(int argc, char ** argv) -> int {
     }
 
     auto const thread_count = thread_count_opt.get().u32;
-    auto const [min_size, step_size, max_size] = parseRange(trace_size_opt.get().string);
-    auto const [min_alpha, step_alpha, max_alpha] = parseRange(alphabet_size_opt.get().string);
-    auto const repeat_count = repeat_opt.get().u32;
 
     // Prepare tests
 
     auto const configurations = [&]() {
+        auto const [min_size, step_size, max_size] = parseRange(trace_size_opt.get().string);
+        auto const [min_alpha, step_alpha, max_alpha] = parseRange(alphabet_size_opt.get().string);
+        auto const repeat_count = repeat_opt.get().u32;
+
         auto res = std::vector<params> {};
         for (auto trace_size = min_size; trace_size <= max_size; trace_size += step_size)
             for (auto alphabet_size = min_alpha; alphabet_size <= max_alpha; alphabet_size += step_alpha)
@@ -137,7 +139,7 @@ auto main(int argc, char ** argv) -> int {
                 }
 
                 auto distribution =
-                      std::uniform_int_distribution<unsigned int> { 0, config.alphabet_size - 1u };
+                      std::uniform_int_distribution<long> { 0, config.alphabet_size - 1u };
 
                 auto duration = std::chrono::nanoseconds { 0u };
                 for (auto i = 0u; i < config.trace_size; ++i) {
