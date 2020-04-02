@@ -2,9 +2,8 @@
 
 #include <cstring>
 
-#include "../allocator.hpp"
-
-#include "vector.hpp"
+#include "eta/core/allocator.hpp"
+#include "eta/core/vector.hpp"
 
 class Node;
 

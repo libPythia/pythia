@@ -6,10 +6,9 @@
 #include <thread>
 #include <vector>
 
-#include "eta_trace/allocator.hpp"
+#include "eta/core/ProgramOptions.hxx"
+#include "eta/core/allocator.hpp"
 #include "eta_trace/factorization.hpp"
-
-#include "ProgramOptions.hxx"
 
 struct params {
     long alphabet_size;

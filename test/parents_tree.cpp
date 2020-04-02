@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 
-#include "eta_trace/allocator.hpp"
+#include "eta/core/allocator.hpp"
 #include "eta_trace/trace.hpp"
 
 auto show = [](auto const & p) {

@@ -16,12 +16,11 @@
     id(!cond) throw 1; \
     else;
 
-#include "eta_trace/allocator.hpp"
+#include "eta/core/ProgramOptions.hxx"
+#include "eta/core/allocator.hpp"
+#include "eta/core/rang.hpp"
 #include "eta_trace/factorization.hpp"
 #include "eta_trace/trace_to_string.hpp"
-
-#include "ProgramOptions.hxx"
-#include "rang.hpp"
 
 auto main(int argc, char ** argv) -> int {
     auto parser = po::parser {};

@@ -3,9 +3,9 @@
 #include <cstdint>
 #include <tuple>
 
-#include "impl/chunk_vector.hpp"
+#include "eta/core/chunk_vector.hpp"
+#include "eta/core/vector.hpp"
 #include "impl/parents_tree.hpp"
-#include "impl/vector.hpp"
 
 // -----------------------------------------------------------
 
