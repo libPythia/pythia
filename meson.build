@@ -35,6 +35,10 @@ eta_trace_factorize = executable('factorize',
                                  'src/factorize.cpp',
                                  dependencies:[eta_trace_dep])
 
+eta_trace_bench = executable('bench',
+                             'src/bench.cpp',
+                             dependencies:[eta_trace_dep],
+                            )
 eta_trace_fuzzy_test = executable('fuzzy_test',
                                   'src/fuzzy_test.cpp',
                                   dependencies:[eta_trace_dep, thread_dep])
