@@ -40,7 +40,7 @@ eta_trace_fuzzy_test = executable('fuzzy_test',
                                   dependencies:[eta_trace_dep, thread_dep])
 
 eta_trace_fuzzy_bench = executable('fuzzy_bench',
-                                   'src/bench.cpp',
+                                   'src/fuzzy_bench.cpp',
                                    dependencies:[eta_trace_dep, thread_dep])
 
 # Testing
