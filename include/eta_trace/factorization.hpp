@@ -71,10 +71,6 @@ auto insertNode(Trace<Allocator> & trace, Node * next, Node * last) -> Node * {
 
     assert(last->previous != nullptr);
 
-    // if (parent->loop() > 1)
-    //     parent = splitLoop<RightSide>(trace, parent, 1);
-    // if (last->loop() > 1)
-    //     last = splitLoop<RightSide>(trace, last, 1);
     if (parent->next->loop() > 1)
         splitLoop<LeftSide>(trace, parent->next, 1);
 
@@ -89,14 +85,10 @@ auto insertNode(Trace<Allocator> & trace, Node * next, Node * last) -> Node * {
     auto const parent_son = parent->son();
     auto const previous = last->previous;
 
-    ///////////////////////////////////////
-    // Can an existing pattern be reused?
-
     // Can an existing pattern be extended ?
     if (!parent_son->isLeaf() &&  // pattern to extend
         parent_son->parents.size() <= 2 &&  // two parents : parent and last
-        parent->loop() == 1u && last->loop() == 1) {  // cannot extend the pattern if it
-                                                      // repeats
+        parent->loop() == 1u && last->loop() == 1) {  // cannot extend the pattern if it repeats
 
         auto const last_pattern_node = getLastPatternNode(parent_son);
         auto const parent_next = parent->next;
@@ -109,23 +101,22 @@ auto insertNode(Trace<Allocator> & trace, Node * next, Node * last) -> Node * {
         removeSon(parent_next);
         if (parent->parents.size() > 0u && parent_next->next == nullptr) {
             ETA_FACTO_PRINT("Merge");
-            trace.releaseNode(parent_next);
             removeSon(parent);
             transferNext(parent_son, parent);
             transferValueOrSon(trace, parent_son, parent);
             trace.releaseNode(parent_son);
-            insertNode(trace, next, last_pattern_node);
-            return insertNode(trace, parent, previous == parent_next ? parent : previous);
         } else {
             ETA_FACTO_PRINT("Extend");
             if (parent_next != nullptr)
                 transferNext(parent_next, parent);
-            trace.releaseNode(parent_next);
-
-            insertNode(trace, next, last_pattern_node);
-            return insertNode(trace, parent_son, previous == parent_next ? parent : previous);
         }
+        trace.releaseNode(parent_next);
+        insertNode(trace, next, last_pattern_node);
+        return insertNode(trace, parent_son, previous == parent_next ? parent : previous);
     }
+
+    ///////////////////////////////////////
+    // Can an existing pattern be reused?
 
     if (parent->previous == nullptr && parent->next->next == nullptr) {
         ETA_FACTO_PRINT("Reuse");

@@ -127,6 +127,7 @@ auto main(int argc, char ** argv) -> int {
             std::cout << rang::fg::reset << rang::style::reset;
         std::cout << res << std::endl;
     };
+
     for (auto thread_id = 0u; thread_id < thread_count; ++thread_id) {
         threads.emplace_back([&]() {
             auto seed = std::chrono::system_clock::now().time_since_epoch().count() + thread_id;
@@ -149,13 +150,66 @@ auto main(int argc, char ** argv) -> int {
                         builder.insert(LeafId(c));
                     }
                     auto const res = linearise(builder.trace().root());
-                    auto const size = res.size();
-                    if (size != trace.size() || [&]() {
-                            for (auto i = 0u; i < size; ++i)
-                                if (res[i].value() != trace[i])
-                                    return true;
+
+                    auto isConform = [&](auto const & input, auto const & res) {
+                        auto const size = res.size();
+                        if (input.size() != size)
                             return false;
-                        }()) {
+                        for (auto i = 0u; i < size; ++i)
+                            if (res[i].value() != input[i])
+                                return false;
+                        return true;
+                    };
+
+                    auto isValid = [&](auto const & trace) {
+                        auto size = trace.nodeCount();
+                        for (auto i = 0u; i < size; ++i) {
+                            auto const node = &trace[i];
+                            if (node == trace.root()) {
+                                if (node->previous != nullptr || node->isLeaf() ||
+                                    node->son() == nullptr || node->parents.size() > 0u) {
+                                    std::cerr << 1 << std::endl;
+                                    return false;
+                                }
+                            } else if (node->isLeaf()) {
+                                if (/*node->parents.size() == 0 ||*/ node->previous != nullptr ||
+                                    node->next != nullptr || node->son() != nullptr) {
+                                    std::cerr << 2 << ' ' << node->parents.size() << '[';
+                                    for (auto && p : node->parents)
+                                        std::cerr << p << ", ";
+                                    std::cerr << "] " << node->previous << ' ' << node->next << ' '
+                                              << node->son() << node->value().value() << std::endl;
+                                    assert(false);
+                                    return false;
+                                }
+                            } else if (node->son() == nullptr) {
+                                // The node is invalid
+                                if (node->parents.size() > 0 || node->previous != nullptr ||
+                                    node->next != nullptr) {
+                                    std::cerr << 3 << std::endl;
+                                    return false;
+                                }
+                            } else if (node->previous == nullptr) {  // Node is pattern
+                                auto occurences = 0u;
+                                for (auto const parent : node->parents)
+                                    occurences += parent->loop();
+                                if (occurences < 2 || node->next == nullptr) {
+                                    std::cerr << 4 << std::endl;
+                                    return false;
+                                }
+                            } else if (node->parents.size() != 0) {
+                                std::cerr << 5 << std::endl;
+                                return false;
+                            }
+                        }
+                        return true;
+                    };
+
+                    if (!isConform(trace, res)) {
+                        reportError(trace, toStr(builder.trace().root(), true, [](auto id) {
+                                        return std::string { (char)('a' + id.value()) };
+                                    }));
+                    } else if (!isValid(builder.trace())) {
                         reportError(trace, toStr(builder.trace().root(), true, [](auto id) {
                                         return std::string { (char)('a' + id.value()) };
                                     }));

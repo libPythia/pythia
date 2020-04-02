@@ -69,11 +69,11 @@ auto main(int argc, char ** argv) -> int {
     auto & thread_count_opt = parser["threads"].abbreviation('t').type(po::u32).fallback(1);
     thread_count_opt.description("Number of threads to launch. Default is 1.");
 
-    auto & trace_size_opt = parser["trace-size"].abbreviation('s');
+    auto & trace_size_opt = parser["trace-size"].abbreviation('s').multi();
     trace_size_opt.type(po::string).fallback("1000:1000:100000");
     trace_size_opt.description("Range of trace size under format min:step:max.");
 
-    auto & alphabet_size_opt = parser["alphabe-size"].abbreviation('a');
+    auto & alphabet_size_opt = parser["alphabet-size"].abbreviation('a').multi();
     alphabet_size_opt.type(po::string).fallback("3:3:15");
     alphabet_size_opt.description("Range of alphabet size under format min:step:max.");
 
@@ -96,15 +96,19 @@ auto main(int argc, char ** argv) -> int {
     // Prepare tests
 
     auto const configurations = [&]() {
-        auto const [min_size, step_size, max_size] = parseRange(trace_size_opt.get().string);
-        auto const [min_alpha, step_alpha, max_alpha] = parseRange(alphabet_size_opt.get().string);
         auto const repeat_count = repeat_opt.get().u32;
 
         auto res = std::vector<params> {};
-        for (auto trace_size = min_size; trace_size <= max_size; trace_size += step_size)
-            for (auto alphabet_size = min_alpha; alphabet_size <= max_alpha; alphabet_size += step_alpha)
-                for (auto i = 0u; i < repeat_count; ++i)
-                    res.push_back(params { alphabet_size, trace_size });
+        for (auto && trace_size : trace_size_opt)
+            for (auto && alphabet_size : alphabet_size_opt) {
+                auto const [min_size, step_size, max_size] = parseRange(trace_size.string);
+                auto const [min_alpha, step_alpha, max_alpha] = parseRange(alphabet_size.string);
+                for (auto trace_size = min_size; trace_size <= max_size; trace_size += step_size)
+                    for (auto alphabet_size = min_alpha; alphabet_size <= max_alpha;
+                         alphabet_size += step_alpha)
+                        for (auto i = 0u; i < repeat_count; ++i)
+                            res.push_back(params { alphabet_size, trace_size });
+            }
         // std::reverse(res.begin(), res.end());  // shorter last for better workload repartition
         //                                        // on end of tests
         std::shuffle(res.begin(), res.end(), std::default_random_engine(seed));  // shuffle for
@@ -151,7 +155,7 @@ auto main(int argc, char ** argv) -> int {
 
                 auto lock = std::unique_lock(out_mutex);
                 std::cout << config.alphabet_size << ' ' << config.trace_size << ' '
-                          << duration.count() << std::endl;
+                          << duration.count() << ' ' << builder.trace().nodeCount() << std::endl;
 
                 auto t = std::chrono::system_clock::now();
                 if (t_print + std::chrono::seconds(5) < t) {

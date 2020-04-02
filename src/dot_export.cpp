@@ -98,7 +98,7 @@ auto writeDotFile(std::ostream & os,
     os << "    /* Sons */\n";
     for (auto const it : sons)
         os << "    \"" << it.first << "\" -> \"" << it.second
-           << "\" [color=\"blue\", arrowhead=\"empty\"];\n";
+           << "\" [color=\"blue\", dir=\"both\", arrowhead=\"onormal\", arrowtail=\"dot\"];\n";
 
     os << "}" << std::endl;
 }

@@ -1,4 +1,3 @@
-#include <cassert>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -130,7 +129,7 @@ auto main(int argc, char ** argv) -> int {
         auto getLeaf = [&leafs](LeafId id) -> std::string {
             auto index = 0u;
             for (auto [is_present, leaf] : leafs) {
-                if (leaf == id) {
+                if (is_present && leaf == id) {
                     assert(is_present);
                     return std::string { static_cast<char>('a' + index) };
                 }
@@ -143,7 +142,7 @@ auto main(int argc, char ** argv) -> int {
         for (auto c : input) {
             auto const index = static_cast<std::size_t>(c - 'a');
             while (leafs.size() <= index)
-                leafs.push_back(std::make_pair(false, LeafId(index)));
+                leafs.push_back(std::make_pair(false, LeafId(0)));
 
             auto & [is_present, id] = leafs[index];
             if (!is_present) {
