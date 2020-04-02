@@ -101,18 +101,20 @@ auto insertNode(Trace<Allocator> & trace, Node * next, Node * last) -> Node * {
         removeSon(parent_next);
         if (parent->parents.size() > 0u && parent_next->next == nullptr) {
             ETA_FACTO_PRINT("Merge");
+            trace.releaseNode(parent_next);
             removeSon(parent);
             transferNext(parent_son, parent);
             transferValueOrSon(trace, parent_son, parent);
             trace.releaseNode(parent_son);
+            insertNode(trace, next, last_pattern_node);
+            return insertNode(trace, parent, previous == parent_next ? parent : previous);
         } else {
             ETA_FACTO_PRINT("Extend");
             if (parent_next != nullptr)
                 transferNext(parent_next, parent);
+            insertNode(trace, next, last_pattern_node);
+            return insertNode(trace, parent_son, previous == parent_next ? parent : previous);
         }
-        trace.releaseNode(parent_next);
-        insertNode(trace, next, last_pattern_node);
-        return insertNode(trace, parent_son, previous == parent_next ? parent : previous);
     }
 
     ///////////////////////////////////////

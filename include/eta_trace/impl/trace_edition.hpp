@@ -17,6 +17,7 @@ inline auto updatePreviousSon(Node * previous, Node * old_son, Node * new_son) -
 inline auto setNext(Node * node, Node * next) -> void {
     assert(node != nullptr);
     assert(next != nullptr);
+    assert(node != next);
     assert(node->next == nullptr);
     assert(next->previous == nullptr);
 
@@ -32,7 +33,9 @@ template <typename Allocator>
 inline auto setSon(Allocator & alloc, Node * node, Node * son, std::size_t loop) -> void {
     assert(node != nullptr);
     assert(son != nullptr);
+    assert(node != son);
     assert(node->son() == nullptr);
+    assert(son->previous == nullptr);
     assert(loop > 0u);
     node->setSon(son, loop);
     updatePreviousSon(node->previous, nullptr, son);
@@ -43,6 +46,7 @@ template <typename Allocator>
 inline auto transferValueOrSon(Trace<Allocator> & trace, Node * from, Node * to) -> void {
     assert(from != nullptr);
     assert(to != nullptr);
+    assert(from != to);
     assert(!to->isLeaf() && to->son() == nullptr);
 
     if (from->isLeaf()) {
@@ -53,6 +57,8 @@ inline auto transferValueOrSon(Trace<Allocator> & trace, Node * from, Node * to)
     } else {
         auto const son = from->son();
         assert(son != nullptr);
+        assert(son != to);
+        assert(son->previous == nullptr);
         updatePreviousSon(from->previous, son, nullptr);
         updatePreviousSon(to->previous, nullptr, son);
         son->parents.remove(from, sonId(from->next));
@@ -103,6 +109,7 @@ inline auto removeNext(Node * from) -> void {
 inline auto removeSon(Node * parent) -> void {
     auto son = parent->son();
     assert(son != nullptr);
+    assert(son->previous == nullptr);
     updatePreviousSon(parent->previous, son, nullptr);
     son->parents.remove(parent, sonId(parent->next));
     parent->setSon(nullptr);
@@ -129,6 +136,9 @@ template <typename Allocator>
 inline auto changeSon(Allocator & alloc, Node * parent, Node * new_son) -> void {
     assert(parent != nullptr);
     assert(new_son != nullptr);
+    assert(parent->son()->previous == nullptr);
+    assert(new_son->previous == nullptr);
+    assert(parent != new_son);
 
     auto const old_son = parent->son();
     auto const next_son = sonId(parent->next);
@@ -158,6 +168,7 @@ inline auto appendOccurence(Trace<Allocator> & trace, Node * last, Node * son) -
     assert(son != nullptr);
     assert(last->next == nullptr);
     assert(last->son() != nullptr);
+    assert(son->previous == nullptr);
 
     auto const node = trace.newNode();
 
