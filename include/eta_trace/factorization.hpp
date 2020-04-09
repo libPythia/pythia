@@ -16,8 +16,7 @@ enum Side {
     LeftSide,
 };
 
-template <Side side, typename Allocator>
-auto splitLoop(Trace<Allocator> & trace, Node * loop, std::size_t count) -> Node * {
+template <Side side> auto splitLoop(Trace & trace, Node * loop, std::size_t count) -> Node * {
     assert(loop != nullptr);
     assert(count > 0u);
     assert(!loop->isLeaf());
@@ -41,8 +40,7 @@ auto splitLoop(Trace<Allocator> & trace, Node * loop, std::size_t count) -> Node
     }
 }
 
-template <typename Allocator>
-auto insertNode(Trace<Allocator> & trace, Node * next, Node * last) -> Node * {
+inline auto insertNode(Trace & trace, Node * next, Node * last) -> Node * {
     assert(next != nullptr);
     assert(last != nullptr);
     assert(last->next == nullptr);
@@ -145,8 +143,10 @@ auto insertNode(Trace<Allocator> & trace, Node * next, Node * last) -> Node * {
     return insertNode(trace, last, previous == last->next ? parent : previous);
 }
 
-template <typename Allocator> class TraceBuilder final {
+class TraceBuilder final {
   public:
+    TraceBuilder(GenericAllocator & allocator)
+          : _trace { allocator } {}
     auto newLeaf() { return _trace.newLeaf(); }
     auto insert(LeafId leaf_id) -> void {
         if (_last != nullptr) {
@@ -160,9 +160,9 @@ template <typename Allocator> class TraceBuilder final {
         }
     }
 
-    auto trace() const -> Trace<Allocator> const & { return _trace; }
+    auto trace() const -> Trace const & { return _trace; }
 
   private:
-    Trace<Allocator> _trace;
+    Trace _trace;
     Node * _last = nullptr;
 };

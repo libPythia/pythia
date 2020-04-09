@@ -29,8 +29,7 @@ inline auto setNext(Node * node, Node * next) -> void {
     next->previous = node;
 }
 
-template <typename Allocator>
-inline auto setSon(Allocator & alloc, Node * node, Node * son, std::size_t loop) -> void {
+inline auto setSon(GenericAllocator & alloc, Node * node, Node * son, std::size_t loop) -> void {
     assert(node != nullptr);
     assert(son != nullptr);
     assert(node != son);
@@ -42,8 +41,7 @@ inline auto setSon(Allocator & alloc, Node * node, Node * son, std::size_t loop)
     son->parents.insert(alloc, node, sonId(node->next));
 }
 
-template <typename Allocator>
-inline auto transferValueOrSon(Trace<Allocator> & trace, Node * from, Node * to) -> void {
+inline auto transferValueOrSon(Trace & trace, Node * from, Node * to) -> void {
     assert(from != nullptr);
     assert(to != nullptr);
     assert(from != to);
@@ -132,8 +130,7 @@ inline auto changeNext(Node * node, Node * new_next) -> void {
     new_next->previous = node;
 }
 
-template <typename Allocator>
-inline auto changeSon(Allocator & alloc, Node * parent, Node * new_son) -> void {
+inline auto changeSon(GenericAllocator & alloc, Node * parent, Node * new_son) -> void {
     assert(parent != nullptr);
     assert(new_son != nullptr);
     assert(parent->son()->previous == nullptr);
@@ -149,8 +146,7 @@ inline auto changeSon(Allocator & alloc, Node * parent, Node * new_son) -> void 
     parent->setSon(new_son, keep_previous);
 }
 
-template <typename Allocator>
-inline auto detachAndReleaseNode(Trace<Allocator> & trace, Node * node) -> void {
+inline auto detachAndReleaseNode(Trace & trace, Node * node) -> void {
     assert(node != nullptr);
     if (node->previous != nullptr)
         removeNext(node->previous);
@@ -162,8 +158,7 @@ inline auto detachAndReleaseNode(Trace<Allocator> & trace, Node * node) -> void 
     trace.releaseNode(node);
 }
 
-template <typename Allocator>
-inline auto appendOccurence(Trace<Allocator> & trace, Node * last, Node * son) -> Node * {
+inline auto appendOccurence(Trace & trace, Node * last, Node * son) -> Node * {
     assert(last != nullptr);
     assert(son != nullptr);
     assert(last->next == nullptr);

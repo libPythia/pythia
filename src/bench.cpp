@@ -51,7 +51,7 @@ auto main(int argc, char ** argv) -> int {
 
     auto const max_insertion = max_insertion_opt.get().u32;
 
-    auto builder = TraceBuilder<StdAllocator> {};
+    auto builder = TraceBuilder { std_allocator };
     auto max_leaf_id = builder.newLeaf();
 
     auto tmp = static_cast<unsigned int>(0);

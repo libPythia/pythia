@@ -7,7 +7,7 @@
 
 // -----------------------------------------------------------
 
-template <typename Allocator> class Trace final {
+class Trace final {
   public:
     auto operator[](std::size_t index) const -> Node const & { return _nodes[index]; }
     auto operator[](LeafId id) const -> Node * { return _leafs[id.value()]; }
@@ -23,7 +23,7 @@ template <typename Allocator> class Trace final {
         _free_nodes.push_back(_allocator, pNode);
     }
 
-    auto allocator() -> Allocator & { return _allocator; }
+    auto allocator() -> GenericAllocator & { return _allocator; }
 
     auto newNode() -> Node * {
         if (_free_nodes.size() > 0) {
@@ -54,6 +54,8 @@ template <typename Allocator> class Trace final {
     auto nodeCount() const { return _nodes.size(); }
 
   public:
+    Trace(GenericAllocator & alloc)
+          : _allocator { alloc } {}
     ~Trace() {
         auto const node_count = _nodes.size();
         for (auto i = 0u; i < node_count; ++i)
@@ -67,6 +69,6 @@ template <typename Allocator> class Trace final {
     chunk_vector<Node, 128> _nodes;
     vector<Node *> _free_nodes;
     vector<Node *> _leafs;
-    Allocator _allocator;
+    GenericAllocator & _allocator;
     Node * _root = nullptr;
 };

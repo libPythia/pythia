@@ -135,7 +135,7 @@ auto main(int argc, char ** argv) -> int {
                     break;
                 auto const config = configurations[test_index];
 
-                auto builder = TraceBuilder<StdAllocator> {};
+                auto builder = TraceBuilder { std_allocator };
                 for (auto i = 0u; i < config.alphabet_size; ++i) {
                     [[maybe_unused]] auto const leafId = builder.newLeaf();
                     assert(leafId.value() == i);

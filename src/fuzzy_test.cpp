@@ -138,7 +138,7 @@ auto main(int argc, char ** argv) -> int {
                     auto distribution =
                           std::uniform_int_distribution<unsigned int> { 0, alphabet_size - 1u };
 
-                    auto builder = TraceBuilder<StdAllocator> {};
+                    auto builder = TraceBuilder { std_allocator };
                     for (auto i = 0u; i < alphabet_size; ++i) {
                         [[maybe_unused]] auto const leafId = builder.newLeaf();
                         assert(leafId.value() == i);

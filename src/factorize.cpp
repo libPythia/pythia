@@ -121,7 +121,7 @@ auto main(int argc, char ** argv) -> int {
     };
 
     for_each_input([&](std::string const & input) {
-        auto builder = TraceBuilder<StdAllocator> {};
+        auto builder = TraceBuilder { std_allocator };
 
         auto leafs = std::vector<std::pair<bool, LeafId>> {};
 
