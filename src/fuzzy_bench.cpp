@@ -8,7 +8,7 @@
 
 #include "eta/core/ProgramOptions.hxx"
 #include "eta/core/allocator.hpp"
-#include "eta_trace/factorization.hpp"
+#include "eta/trace/factorization.hpp"
 
 struct params {
     long alphabet_size;

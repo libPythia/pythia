@@ -1,4 +1,4 @@
-#include "eta_trace/factorization.hpp"
+#include "factorization.hpp"
 
 #include "trace_edition.hpp"
 

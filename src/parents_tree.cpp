@@ -1,4 +1,6 @@
-#include "eta_trace/impl/parents_tree.hpp"
+#include "parents_tree.hpp"
+
+#include <cstring>
 
 #undef assert
 #define assert(cond) \

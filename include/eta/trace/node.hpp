@@ -1,7 +1,7 @@
 #pragma once
 
-#include "eta_trace/leaf_id.hpp"
-#include "impl/parents_tree.hpp"
+#include "leaf_id.hpp"
+#include "parents_tree.hpp"
 
 // -----------------------------------------------------------
 

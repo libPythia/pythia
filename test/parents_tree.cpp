@@ -1,10 +1,10 @@
-#include "eta_trace/impl/parents_tree.hpp"
+#include "eta/trace/parents_tree.hpp"
 
 #include <iostream>
 #include <vector>
 
 #include "eta/core/allocator.hpp"
-#include "eta_trace/trace.hpp"
+#include "eta/trace/trace.hpp"
 
 auto show = [](auto const & p) {
     for (auto const & v : p.data()) {

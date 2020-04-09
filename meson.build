@@ -5,12 +5,9 @@ project(
   default_options : ['cpp_std=c++17', 'warning_level=3']
 )
 
+eta_core = subproject('eta_core')
+eta_core_dep = eta_core.get_variable('eta_core_dep')
 thread_dep = dependency('threads')
-
-include_directory='include'
-
-# For installation
-install_subdir(include_directory, install_dir:get_option('includedir'))
 
 eta_trace_src = [
     'src/export.cpp',
@@ -19,15 +16,12 @@ eta_trace_src = [
     'src/trace.cpp',
 ]
 
-eta_core = subproject('eta_core')
-eta_core_dep = eta_core.get_variable('eta_core_dep')
-
 eta_trace_lib = static_library('eta_trace',
                                eta_trace_src,
                                dependencies:[eta_core_dep],
-                               include_directories:[include_directory])
+                               include_directories:['include/eta/trace'])
 
-eta_trace_dep = declare_dependency(include_directories:[include_directory],
+eta_trace_dep = declare_dependency(include_directories:['include'],
                                    link_with:[eta_trace_lib],
                                    dependencies:[eta_core_dep])
 

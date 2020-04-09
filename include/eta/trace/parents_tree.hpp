@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstring>
-
 #include "eta/core/allocator.hpp"
 #include "eta/core/vector.hpp"
 

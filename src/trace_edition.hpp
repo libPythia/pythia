@@ -1,6 +1,6 @@
 #pragma once
 
-#include "eta_trace/trace.hpp"
+#include "trace.hpp"
 
 inline auto sonId(Node * node) -> Node * { return node == nullptr ? nullptr : node->son(); }
 
