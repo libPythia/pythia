@@ -19,8 +19,8 @@
 #include "eta/core/ProgramOptions.hxx"
 #include "eta/core/allocator.hpp"
 #include "eta/core/rang.hpp"
+#include "eta_trace/export.hpp"
 #include "eta_trace/factorization.hpp"
-#include "eta_trace/trace_to_string.hpp"
 
 auto main(int argc, char ** argv) -> int {
     auto parser = po::parser {};

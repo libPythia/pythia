@@ -13,11 +13,10 @@ include_directory='include'
 install_subdir(include_directory, install_dir:get_option('includedir'))
 
 eta_trace_src = [
-    'src/dot_export.cpp',
+    'src/export.cpp',
     'src/factorization.cpp',
     'src/parents_tree.cpp',
     'src/trace.cpp',
-    'src/trace_to_string.cpp',
 ]
 
 eta_core = subproject('eta_core')
