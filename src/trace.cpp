@@ -2,10 +2,24 @@
 
 // -----------------------------------------------------------
 
+Trace::Trace(GenericAllocator & alloc)
+      : _allocator { alloc } {}
+
+Trace::~Trace() {
+    auto const node_count = _nodes.size();
+    for (auto i = 0u; i < node_count; ++i)
+        _nodes[i].parents.deinit(_allocator);
+    _nodes.deinit(_allocator);
+    _free_nodes.deinit(_allocator);
+    _leafs.deinit(_allocator);
+}
+
+// -----------------------------------------------------------
+
 auto Trace::newLeaf() -> LeafId {
     auto const node = newNode();
     auto const leaf_id = LeafId(_leafs.size());
-    _leafs.push_back(*_allocator, node);
+    _leafs.push_back(_allocator, node);
     node->setLeaf(leaf_id);
     return leaf_id;
 }
@@ -49,11 +63,3 @@ auto Trace::setRoot(Node * pNode) -> void {
 
 // -----------------------------------------------------------
 
-Trace::~Trace() {
-    auto const node_count = _nodes.size();
-    for (auto i = 0u; i < node_count; ++i)
-        _nodes[i].parents.deinit(*_allocator);
-    _nodes.deinit(*_allocator);
-    _free_nodes.deinit(*_allocator);
-    _leafs.deinit(*_allocator);
-}

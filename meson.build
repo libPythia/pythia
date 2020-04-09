@@ -16,6 +16,7 @@ eta_trace_src = [
     'src/dot_export.cpp',
     'src/factorization.cpp',
     'src/parents_tree.cpp',
+    'src/trace.cpp',
     'src/trace_to_string.cpp',
 ]
 
