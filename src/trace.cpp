@@ -21,6 +21,7 @@ auto Trace::newLeaf() -> LeafId {
     auto const leaf_id = LeafId(_leafs.size());
     _leafs.push_back(_allocator, node);
     node->setLeaf(leaf_id);
+    node->size = 1;
     return leaf_id;
 }
 
@@ -59,6 +60,43 @@ auto Trace::setRoot(Node * pNode) -> void {
     assert(_root == nullptr);
     assert(pNode != nullptr);
     _root = pNode;
+}
+
+// -----------------------------------------------------------
+
+auto computeIndicesAndOffset(GenericAllocator & allocator, Trace & trace) -> void {
+    auto buffer = vector<Node *> {};
+    for (auto it = trace.root(); it != nullptr; it = it->next)
+        buffer.push_back(allocator, it);
+
+    while (buffer.size() > 0) {
+        auto node = buffer.back();
+        if (node->size >= 0)
+            buffer.pop_back();
+        else if (node->son()->size < 0) {
+            for (auto it = node->son(); it != nullptr; it = it->next) {
+                assert(it->size == -1);
+                buffer.push_back(allocator, it);
+            }
+        } else {
+            auto it = node->son();
+            it->offset = 0;
+            node->size = it->size * it->loop();
+
+            while ((it = it->next) != nullptr) {
+                node->size += it->size * it->loop();
+                it->offset = it->previous->offset + it->previous->size * it->previous->loop();
+            }
+            buffer.pop_back();
+        }
+    }
+
+    auto it = trace.root();
+    it->offset = 0;
+    while ((it = it->next) != nullptr)
+        it->offset = it->previous->offset + it->previous->size * it->previous->loop();
+
+    buffer.deinit(allocator);
 }
 
 // -----------------------------------------------------------

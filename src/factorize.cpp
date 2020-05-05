@@ -156,6 +156,8 @@ auto main(int argc, char ** argv) -> int {
             }
         }
 
+        computeIndicesAndOffset(std_allocator, builder.trace());
+
         auto nodeId = std::map<Node const *, int> {};
         for (auto i = 0u; i < builder.trace().nodeCount(); ++i)
             nodeId[&builder.trace()[i]] = i;

@@ -28,6 +28,8 @@ class Node final {
     Parents parents;
     Node * previous;
     Node * next;
+    int size = -1;
+    int offset = -1;
 
   public:
     auto isLeaf() const -> bool { return _loop == 0u; }

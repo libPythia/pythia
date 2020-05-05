@@ -26,6 +26,7 @@ class Trace final {
     auto allocator() -> GenericAllocator & { return _allocator; }
 
     auto root() const -> Node const * { return _root; }
+    auto root() -> Node * { return _root; }
     auto setRoot(Node * pNode) -> void;
 
   private:
@@ -35,3 +36,10 @@ class Trace final {
     GenericAllocator & _allocator;
     Node * _root = nullptr;
 };
+
+// -----------------------------------------------------------
+
+auto computeIndicesAndOffset(GenericAllocator & allocator, Trace & trace) -> void;
+
+// -----------------------------------------------------------
+
