@@ -130,7 +130,7 @@ auto writeDotFile(std::ostream & os,
     os << "\n";
 
     os << "    /* Organisation */\n";
-    for (auto const it : nexts) {
+    for (auto const & it : nexts) {
         os << "    { rank=same; \"" << it.first << "\", \"" << it.second << "\"}\n";
     }
 
@@ -172,13 +172,13 @@ auto writeDotFile(std::ostream & os,
 
     os << "\n";
     os << "    /* Next */\n";
-    for (auto const it : nexts)
+    for (auto const & it : nexts)
         os << "    \"" << it.first << "\" -> \"" << it.second
            << "\" [color=\"black\", arrowhead=\"normal\"];\n";
 
     os << "\n";
     os << "    /* Sons */\n";
-    for (auto const it : sons)
+    for (auto const & it : sons)
         os << "    \"" << it.first << "\" -> \"" << it.second
            << "\" [color=\"blue\", dir=\"both\", arrowhead=\"onormal\", arrowtail=\"dot\"];\n";
 

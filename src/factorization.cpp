@@ -2,7 +2,7 @@
 
 #include "trace_edition.hpp"
 
-auto searchParentPattern(Node * last, Node * next) -> Node * {
+static auto searchParentPattern(Node * last, Node * next) -> Node * {
     assert(last != nullptr);
     assert(next != nullptr);
     auto const last_son = last->son();
@@ -17,7 +17,7 @@ auto searchParentPattern(Node * last, Node * next) -> Node * {
     return nullptr;
 }
 
-auto getLastPatternNode(Node * node) -> Node * {
+static auto getLastPatternNode(Node * node) -> Node * {
     auto last = static_cast<Node *>(nullptr);
     while (node != nullptr) {
         last = node;
@@ -33,7 +33,8 @@ enum Side {
     LeftSide,
 };
 
-template <Side side> auto splitLoop(Trace & trace, Node * loop, std::size_t count) -> Node * {
+template <Side side>
+static auto splitLoop(Trace & trace, Node * loop, std::size_t count) -> Node * {
     assert(loop != nullptr);
     assert(count > 0u);
     assert(!loop->isLeaf());

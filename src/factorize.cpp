@@ -20,37 +20,6 @@ bool eta_factorization_print_debugs = false;
 
 using namespace std::string_literals;
 
-auto debug = [](auto & trace, auto && getLeaf) {
-    auto nodeId = std::map<Node const *, int> {};
-    for (auto i = 0u; i < trace.nodeCount(); ++i)
-        nodeId[&trace[i]] = i;
-
-    std::cerr << "root : " << nodeId[trace.root()] << std::endl;
-
-    for (auto i = 0u; i < trace.nodeCount(); ++i) {
-        auto node = &trace[i];
-        std::cerr << "## " << nodeId[node];
-        if (node->loop() > 1u)
-            std::cerr << " loop(" << node->loop() << ")";
-        if (node == trace.root())
-            std::cerr << "  -- root";
-        std::cerr << std::endl;
-
-        if (node->next != nullptr)
-            std::cerr << "    next : " << nodeId[node->next] << std::endl;
-        if (node->previous != nullptr)
-            std::cerr << "    previous : " << nodeId[node->previous] << std::endl;
-        if (node->parents.size() > 0) {
-            std::cerr << "    parents : TODO" << std::endl;
-        }
-        if (node->isLeaf())
-            std::cerr << "    value : " << getLeaf(node->value()) << std::endl;
-        else if (node->son() == nullptr)
-            std::cerr << "    EMPTY" << std::endl;
-        else
-            std::cerr << "    son : " << nodeId[node->son()] << std::endl;
-    }
-};
 
 auto main(int argc, char ** argv) -> int {
     auto parser = po::parser {};
