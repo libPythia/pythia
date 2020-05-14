@@ -22,6 +22,8 @@
 #include "eta/trace/export.hpp"
 #include "eta/trace/factorization.hpp"
 
+using namespace eta;
+
 auto main(int argc, char ** argv) -> int {
     auto parser = po::parser {};
 
@@ -29,8 +31,9 @@ auto main(int argc, char ** argv) -> int {
     duration_opt.description("Maximum duration of the test in seconds. Default is 5 secondes");
 
     auto & max_error_count_opt = parser["max-errors"].abbreviation('e').type(po::u32).fallback(10);
-    max_error_count_opt.description("Print debug information instead of factorized trace. 0 for no "
-                                    "limit. Default is 10.");
+    max_error_count_opt.description(
+            "Print debug information instead of factorized trace. 0 for no "
+            "limit. Default is 10.");
 
     auto & thread_count_opt = parser["threads"].abbreviation('t').type(po::u32).fallback(1);
     thread_count_opt.description("Number of threads to launch. Default is 1");
@@ -136,7 +139,7 @@ auto main(int argc, char ** argv) -> int {
                 auto trace = std::vector<unsigned char>(trace_size);
                 try {
                     auto distribution =
-                          std::uniform_int_distribution<unsigned int> { 0, alphabet_size - 1u };
+                            std::uniform_int_distribution<unsigned int> { 0, alphabet_size - 1u };
 
                     auto builder = TraceBuilder { std_allocator };
                     for (auto i = 0u; i < alphabet_size; ++i) {

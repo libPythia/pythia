@@ -10,6 +10,8 @@
 #include "eta/core/allocator.hpp"
 #include "eta/trace/factorization.hpp"
 
+using namespace eta;
+
 struct params {
     long alphabet_size;
     long trace_size;
@@ -142,7 +144,7 @@ auto main(int argc, char ** argv) -> int {
                 }
 
                 auto distribution =
-                      std::uniform_int_distribution<long> { 0, config.alphabet_size - 1u };
+                        std::uniform_int_distribution<long> { 0, config.alphabet_size - 1u };
 
                 auto duration = std::chrono::nanoseconds { 0u };
                 for (auto i = 0u; i < config.trace_size; ++i) {

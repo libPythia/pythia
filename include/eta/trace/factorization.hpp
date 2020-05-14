@@ -2,6 +2,8 @@
 
 #include "trace.hpp"
 
+namespace eta {
+
 auto insertNode(Trace & trace, Node * next, Node * last) -> Node *;
 
 class TraceBuilder final {
@@ -16,3 +18,5 @@ class TraceBuilder final {
     Trace _trace;
     Node * _last = nullptr;
 };
+
+}  // namespace eta

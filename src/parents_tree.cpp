@@ -2,12 +2,8 @@
 
 #include <cstring>
 
-#undef assert
-#define assert(cond) \
-    if (!(cond))     \
-        throw 1;     \
-    else {           \
-    }
+namespace eta {
+
 // ------------------------------------------------
 
 template <typename F> static auto find_index(Node * id, std::size_t m, std::size_t M, F && key) {
@@ -46,7 +42,7 @@ auto Parents::insert(GenericAllocator & alloc, Node * node, Node * key) -> void 
         ++_key_count;
     } else {
         auto const index =
-              find_index(node, _key_count, _data.size(), [&](auto i) { return _data[i].value; });
+                find_index(node, _key_count, _data.size(), [&](auto i) { return _data[i].value; });
         assert(index >= _key_count && (index == _data.size() || _data[index].value != node));
         _data.insert(alloc, index, pair { nullptr, node });
     }
@@ -64,7 +60,7 @@ auto Parents::remove(Node * node, Node * key) -> void {
         --_key_count;
     } else {
         auto const index =
-              find_index(node, _key_count, _data.size(), [&](auto i) { return _data[i].value; });
+                find_index(node, _key_count, _data.size(), [&](auto i) { return _data[i].value; });
         assert(_data[index].value == node);
         _data.remove(index);
     }
@@ -81,14 +77,18 @@ auto Parents::replace(Node * node, Node * old_key, Node * new_key) -> void {
         if (old_key != nullptr)
             return find_index(old_key, 0u, _key_count, [&](auto i) { return _data[i].key; });
         else
-            return find_index(node, _key_count, _data.size(), [&](auto i) { return _data[i].value; });
+            return find_index(node, _key_count, _data.size(), [&](auto i) {
+                return _data[i].value;
+            });
     }();
 
     auto const new_index = [&]() {
         if (new_key != nullptr)
             return find_index(new_key, 0u, _key_count, [&](auto i) { return _data[i].key; });
         else
-            return find_index(node, _key_count, _data.size(), [&](auto i) { return _data[i].value; });
+            return find_index(node, _key_count, _data.size(), [&](auto i) {
+                return _data[i].value;
+            });
     }();
 
     assert(old_index < _data.size());
@@ -126,3 +126,4 @@ auto Parents::deinit(GenericAllocator & alloc) -> void {
 
 // ------------------------------------------------
 
+}  // namespace eta

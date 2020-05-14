@@ -18,8 +18,8 @@ bool eta_factorization_print_debugs = false;
 #include "eta/trace/export.hpp"
 #include "eta/trace/factorization.hpp"
 
+using namespace eta;
 using namespace std::string_literals;
-
 
 auto main(int argc, char ** argv) -> int {
     auto parser = po::parser {};

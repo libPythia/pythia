@@ -5,6 +5,8 @@
 #include <tuple>
 #include <vector>
 
+namespace eta {
+
 // -----------------------------------------------------------
 
 auto linearise(Node const * root) -> std::vector<LeafId> {
@@ -39,7 +41,7 @@ auto linearise(Node const * root) -> std::vector<LeafId> {
 // -----------------------------------------------------------
 
 auto toStr(Node const * root, bool parenthesis, std::function<std::string(LeafId)> getLeaf)
-      -> std::string {
+        -> std::string {
     if (root == nullptr)
         return "";
 
@@ -186,4 +188,6 @@ auto writeDotFile(std::ostream & os,
 }
 
 // -----------------------------------------------------------
+
+}  // namespace eta
 

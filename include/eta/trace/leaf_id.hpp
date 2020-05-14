@@ -1,12 +1,13 @@
 #pragma once
 
+namespace eta {
+
 struct LeafId {
   public:
     using underlying_t = unsigned int;
 
   public:
-    constexpr LeafId(underlying_t v)
-          : _value(v) {}
+    constexpr LeafId(underlying_t v) : _value(v) {}
 
     auto value() const { return _value; }
 
@@ -17,3 +18,5 @@ struct LeafId {
   private:
     underlying_t _value;
 };
+
+}  // namespace eta

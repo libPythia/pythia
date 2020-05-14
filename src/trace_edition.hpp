@@ -2,6 +2,8 @@
 
 #include "trace.hpp"
 
+namespace eta {
+
 inline auto sonId(Node * node) -> Node * { return node == nullptr ? nullptr : node->son(); }
 
 inline auto updatePreviousSon(Node * previous, Node * old_son, Node * new_son) -> void {
@@ -176,3 +178,5 @@ inline auto appendOccurence(Trace & trace, Node * last, Node * son) -> Node * {
 
     return node;
 }
+
+}  // namespace eta

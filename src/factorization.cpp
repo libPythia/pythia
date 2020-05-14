@@ -2,6 +2,8 @@
 
 #include "trace_edition.hpp"
 
+namespace eta {
+
 static auto searchParentPattern(Node * last, Node * next) -> Node * {
     assert(last != nullptr);
     assert(next != nullptr);
@@ -104,8 +106,8 @@ auto insertNode(Trace & trace, Node * next, Node * last) -> Node * {
     auto const previous = last->previous;
 
     // Can an existing pattern be extended ?
-    if (!parent_son->isLeaf() &&  // pattern to extend
-        parent_son->parents.size() <= 2 &&  // two parents : parent and last
+    if (!parent_son->isLeaf() &&                      // pattern to extend
+        parent_son->parents.size() <= 2 &&            // two parents : parent and last
         parent->loop() == 1u && last->loop() == 1) {  // cannot extend the pattern if it repeats
 
         auto const last_pattern_node = getLastPatternNode(parent_son);
@@ -165,8 +167,7 @@ auto insertNode(Trace & trace, Node * next, Node * last) -> Node * {
 
 // -----------------------------------------------------------
 
-TraceBuilder::TraceBuilder(GenericAllocator & allocator)
-      : _trace { allocator } {}
+TraceBuilder::TraceBuilder(GenericAllocator & allocator) : _trace { allocator } {}
 
 auto TraceBuilder::insert(LeafId leaf_id) -> void {
     if (_last != nullptr) {
@@ -182,3 +183,4 @@ auto TraceBuilder::insert(LeafId leaf_id) -> void {
 
 // -----------------------------------------------------------
 
+}  // namespace eta

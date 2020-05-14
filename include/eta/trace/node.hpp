@@ -3,6 +3,7 @@
 #include "leaf_id.hpp"
 #include "parents_tree.hpp"
 
+namespace eta {
 // -----------------------------------------------------------
 
 struct keep_previous_t {};
@@ -12,13 +13,7 @@ static constexpr keep_previous_t keep_previous;
 
 class Node final {
   public:
-    Node()
-          : parents()
-          , previous(nullptr)
-          , next(nullptr)
-          , _loop(1u) {
-        _son = nullptr;
-    }
+    Node() : parents(), previous(nullptr), next(nullptr), _loop(1u) { _son = nullptr; }
     Node(Node &&) = delete;
     Node(Node const &) = delete;
     auto operator=(Node &&) -> Node & = delete;
@@ -84,3 +79,4 @@ class Node final {
     };
     unsigned int _loop;
 };
+}  // namespace eta

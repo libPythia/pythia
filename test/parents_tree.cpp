@@ -6,6 +6,8 @@
 #include "eta/core/allocator.hpp"
 #include "eta/trace/trace.hpp"
 
+using namespace eta;
+
 auto show = [](auto const & p) {
     for (auto const & v : p.data()) {
         if (v.key != nullptr)
@@ -111,8 +113,12 @@ auto main() -> int {
     assert(compare(p, std::vector { 2, 4, 6, 8, 3, 5, 9 }));
     assert(p.keyCount() == 4);
 
-    p.replace(reinterpret_cast<Node *>(8), reinterpret_cast<Node *>(14), reinterpret_cast<Node *>(1));
-    p.replace(reinterpret_cast<Node *>(4), reinterpret_cast<Node *>(8), reinterpret_cast<Node *>(2));
+    p.replace(reinterpret_cast<Node *>(8),
+              reinterpret_cast<Node *>(14),
+              reinterpret_cast<Node *>(1));
+    p.replace(reinterpret_cast<Node *>(4),
+              reinterpret_cast<Node *>(8),
+              reinterpret_cast<Node *>(2));
 
     assert(p[reinterpret_cast<Node *>(14)] == nullptr);
     assert(p[reinterpret_cast<Node *>(1)] == reinterpret_cast<Node *>(8));

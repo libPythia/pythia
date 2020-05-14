@@ -2,10 +2,11 @@
 
 #include "eta/core/chunk_vector.hpp"
 #include "eta/core/vector.hpp"
-
 #include "node.hpp"
 
 // -----------------------------------------------------------
+
+namespace eta {
 
 class Trace final {
   public:
@@ -43,3 +44,4 @@ auto computeIndicesAndOffset(GenericAllocator & allocator, Trace & trace) -> voi
 
 // -----------------------------------------------------------
 
+}  // namespace eta

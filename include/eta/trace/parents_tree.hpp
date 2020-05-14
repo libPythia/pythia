@@ -3,6 +3,8 @@
 #include "eta/core/allocator.hpp"
 #include "eta/core/vector.hpp"
 
+namespace eta {
+
 class Node;
 
 class Parents {
@@ -15,12 +17,11 @@ class Parents {
     class const_iterator final {
       private:
         friend class Parents;
-        const_iterator(pair const * it)
-              : _it(it) {}
+        const_iterator(pair const * it) : _it(it) {}
 
       public:
         auto operator*() { return _it->value; }
-        auto operator-> () { return &_it->value; }
+        auto operator->() { return &_it->value; }
         auto operator++() { return ++_it; }
         auto operator!=(const_iterator const & it) { return _it != it._it; }
 
@@ -48,3 +49,5 @@ class Parents {
     vector<pair> _data;
     std::size_t _key_count = 0u;
 };
+
+}  // namespace eta

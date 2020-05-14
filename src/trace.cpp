@@ -1,9 +1,10 @@
 #include "trace.hpp"
 
+namespace eta {
+
 // -----------------------------------------------------------
 
-Trace::Trace(GenericAllocator & alloc)
-      : _allocator { alloc } {}
+Trace::Trace(GenericAllocator & alloc) : _allocator { alloc } {}
 
 Trace::~Trace() {
     auto const node_count = _nodes.size();
@@ -101,3 +102,4 @@ auto computeIndicesAndOffset(GenericAllocator & allocator, Trace & trace) -> voi
 
 // -----------------------------------------------------------
 
+}  // namespace eta

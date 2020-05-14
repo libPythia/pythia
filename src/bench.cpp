@@ -8,6 +8,8 @@
 #include "eta/trace/export.hpp"
 #include "eta/trace/factorization.hpp"
 
+using namespace eta;
+
 auto main(int argc, char ** argv) -> int {
     auto parser = po::parser {};
 
@@ -81,7 +83,8 @@ auto main(int argc, char ** argv) -> int {
         auto input = std::ifstream {};
         input.open(file_opt.get().string);
         if (!input.is_open()) {
-            std::cerr << "Failed to open input file \"" << file_opt.get().string << "\"." << std::endl;
+            std::cerr << "Failed to open input file \"" << file_opt.get().string << "\"."
+                      << std::endl;
             exit(1);
         }
         parse(input);
@@ -94,14 +97,15 @@ auto main(int argc, char ** argv) -> int {
         auto output = std::ofstream {};
         output.open(dot_opt.get().string);
         if (!output.is_open()) {
-            std::cerr << "Failed to open output file \"" << dot_opt.get().string << "\"." << std::endl;
+            std::cerr << "Failed to open output file \"" << dot_opt.get().string << "\"."
+                      << std::endl;
             exit(1);
         }
 
         writeDotFile(
-              output,
-              builder.trace().root(),
-              [](auto &&) { return ""; },
-              [](auto && id) { return std::to_string(id.value()); });
+                output,
+                builder.trace().root(),
+                [](auto &&) { return ""; },
+                [](auto && id) { return std::to_string(id.value()); });
     }
 }
