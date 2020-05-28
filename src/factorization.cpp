@@ -167,7 +167,7 @@ auto insertNode(Trace & trace, Node * next, Node * last) -> Node * {
 
 // -----------------------------------------------------------
 
-TraceBuilder::TraceBuilder(GenericAllocator & allocator) : _trace { allocator } {}
+TraceBuilder::TraceBuilder(allocator_t & allocator) : _trace { allocator } {}
 
 auto TraceBuilder::insert(LeafId leaf_id) -> void {
     if (_last != nullptr) {

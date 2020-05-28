@@ -31,7 +31,7 @@ inline auto setNext(Node * node, Node * next) -> void {
     next->previous = node;
 }
 
-inline auto setSon(GenericAllocator & alloc, Node * node, Node * son, std::size_t loop) -> void {
+inline auto setSon(allocator_t & alloc, Node * node, Node * son, std::size_t loop) -> void {
     assert(node != nullptr);
     assert(son != nullptr);
     assert(node != son);
@@ -132,7 +132,7 @@ inline auto changeNext(Node * node, Node * new_next) -> void {
     new_next->previous = node;
 }
 
-inline auto changeSon(GenericAllocator & alloc, Node * parent, Node * new_son) -> void {
+inline auto changeSon(allocator_t & alloc, Node * parent, Node * new_son) -> void {
     assert(parent != nullptr);
     assert(new_son != nullptr);
     assert(parent->son()->previous == nullptr);

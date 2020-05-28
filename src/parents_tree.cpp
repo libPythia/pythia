@@ -33,7 +33,7 @@ auto Parents::operator[](Node * id) const -> Node * {
 
 // ------------------------------------------------
 
-auto Parents::insert(GenericAllocator & alloc, Node * node, Node * key) -> void {
+auto Parents::insert(allocator_t & alloc, Node * node, Node * key) -> void {
     assert(node != nullptr);
     if (key != nullptr) {
         auto const index = find_index(key, 0u, _key_count, [&](auto i) { return _data[i].key; });
@@ -119,7 +119,7 @@ auto Parents::replace(Node * node, Node * old_key, Node * new_key) -> void {
 
 // ------------------------------------------------
 
-auto Parents::deinit(GenericAllocator & alloc) -> void {
+auto Parents::deinit(allocator_t & alloc) -> void {
     _data.deinit(alloc);
     _key_count = 0u;
 }

@@ -4,7 +4,7 @@ namespace eta {
 
 // -----------------------------------------------------------
 
-Trace::Trace(GenericAllocator & alloc) : _allocator { alloc } {}
+Trace::Trace(allocator_t & alloc) : _allocator { alloc } {}
 
 Trace::~Trace() {
     auto const node_count = _nodes.size();
@@ -65,7 +65,7 @@ auto Trace::setRoot(Node * pNode) -> void {
 
 // -----------------------------------------------------------
 
-auto computeIndicesAndOffset(GenericAllocator & allocator, Trace & trace) -> void {
+auto computeIndicesAndOffset(allocator_t & allocator, Trace & trace) -> void {
     auto buffer = vector<Node *> {};
     for (auto it = trace.root(); it != nullptr; it = it->next)
         buffer.push_back(allocator, it);

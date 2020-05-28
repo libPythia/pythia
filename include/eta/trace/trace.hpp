@@ -10,7 +10,7 @@ namespace eta {
 
 class Trace final {
   public:
-    Trace(GenericAllocator & alloc);
+    Trace(allocator_t & alloc);
     ~Trace();
 
   public:
@@ -24,7 +24,7 @@ class Trace final {
     auto newNode() -> Node *;
     auto releaseNode(Node * pNode) -> void;
 
-    auto allocator() -> GenericAllocator & { return _allocator; }
+    auto allocator() -> allocator_t & { return _allocator; }
 
     auto root() const -> Node const * { return _root; }
     auto root() -> Node * { return _root; }
@@ -34,13 +34,13 @@ class Trace final {
     chunk_vector<Node, 128> _nodes;
     vector<Node *> _free_nodes;
     vector<Node *> _leafs;
-    GenericAllocator & _allocator;
+    allocator_t & _allocator;
     Node * _root = nullptr;
 };
 
 // -----------------------------------------------------------
 
-auto computeIndicesAndOffset(GenericAllocator & allocator, Trace & trace) -> void;
+auto computeIndicesAndOffset(allocator_t & allocator, Trace & trace) -> void;
 
 // -----------------------------------------------------------
 

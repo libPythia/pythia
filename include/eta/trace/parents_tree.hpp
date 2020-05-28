@@ -37,11 +37,11 @@ class Parents {
     auto keyCount() const { return _key_count; }
 
     auto operator[](Node * id) const -> Node *;
-    auto insert(GenericAllocator & alloc, Node * node, Node * key = nullptr) -> void;
+    auto insert(allocator_t & alloc, Node * node, Node * key = nullptr) -> void;
     auto remove(Node * node, Node * key = nullptr) -> void;
     auto replace(Node * node, Node * old_key, Node * new_key) -> void;
 
-    auto deinit(GenericAllocator & alloc) -> void;
+    auto deinit(allocator_t & alloc) -> void;
 
     auto size() const { return _data.size(); }
 

@@ -34,7 +34,7 @@ auto compare = [](auto const & a, auto const & b) {
 };
 
 auto main() -> int {
-    auto a = StdAllocator {};
+    auto a = std_allocator_t {};
     auto p = Parents {};
 
     p.insert(a, reinterpret_cast<Node *>(4));
