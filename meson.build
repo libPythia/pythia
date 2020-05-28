@@ -1,5 +1,5 @@
 project(
-  'eta_trace',
+  'eta_factorizer',
   'cpp',
   version : '0.1',
   default_options : ['cpp_std=c++17', 'warning_level=3']
@@ -9,37 +9,37 @@ eta_core = subproject('eta_core')
 eta_core_dep = eta_core.get_variable('eta_core_dep')
 thread_dep = dependency('threads')
 
-eta_trace_src = [
+eta_factorizer_src = [
     'src/export.cpp',
     'src/factorization.cpp',
     'src/parents_tree.cpp',
     'src/trace.cpp',
 ]
 
-eta_trace_lib = static_library('eta_trace',
-                               eta_trace_src,
+eta_factorizer_lib = static_library('eta_factorizer',
+                               eta_factorizer_src,
                                dependencies:[eta_core_dep],
                                include_directories:['include/eta/trace'])
 
-eta_trace_dep = declare_dependency(include_directories:['include'],
-                                   link_with:[eta_trace_lib],
+eta_factorizer_dep = declare_dependency(include_directories:['include'],
+                                   link_with:[eta_factorizer_lib],
                                    dependencies:[eta_core_dep])
 
-eta_trace_factorize = executable('factorize',
+eta_factorizer_factorize = executable('factorize',
                                  'src/factorize.cpp',
-                                 dependencies:[eta_trace_dep])
+                                 dependencies:[eta_factorizer_dep])
 
-eta_trace_bench = executable('bench',
+eta_factorizer_bench = executable('bench',
                              'src/bench.cpp',
-                             dependencies:[eta_trace_dep],
+                             dependencies:[eta_factorizer_dep],
                             )
-eta_trace_fuzzy_test = executable('fuzzy_test',
+eta_factorizer_fuzzy_test = executable('fuzzy_test',
                                   'src/fuzzy_test.cpp',
-                                  dependencies:[eta_trace_dep, thread_dep])
+                                  dependencies:[eta_factorizer_dep, thread_dep])
 
-eta_trace_fuzzy_bench = executable('fuzzy_bench',
+eta_factorizer_fuzzy_bench = executable('fuzzy_bench',
                                    'src/fuzzy_bench.cpp',
-                                   dependencies:[eta_trace_dep, thread_dep])
+                                   dependencies:[eta_factorizer_dep, thread_dep])
 
 # Testing
 test_files=[
@@ -49,7 +49,7 @@ test_files=[
 foreach file : test_files
     src = 'test/' + file
     test_name = 'test_' + file.underscorify()
-    test_exe = executable(test_name, src, dependencies:[eta_trace_dep])
+    test_exe = executable(test_name, src, dependencies:[eta_factorizer_dep])
     test(test_name, test_exe)
 endforeach
 
