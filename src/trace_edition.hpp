@@ -2,7 +2,7 @@
 
 #include "trace.hpp"
 
-namespace eta {
+namespace eta::factorization {
 
 inline auto sonId(Node * node) -> Node * { return node == nullptr ? nullptr : node->son(); }
 
@@ -179,4 +179,4 @@ inline auto appendOccurence(Trace & trace, Node * last, Node * son) -> Node * {
     return node;
 }
 
-}  // namespace eta
+}  // namespace eta::factorization

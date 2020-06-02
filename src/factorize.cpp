@@ -12,13 +12,14 @@
 
 bool eta_factorization_print_debugs = false;
 
-#include "eta/core/ProgramOptions.hxx"
-#include "eta/core/allocator.hpp"
-#include "eta/core/rang.hpp"
-#include "eta/trace/export.hpp"
-#include "eta/trace/factorization.hpp"
+#include <eta/core/ProgramOptions.hxx>
+#include <eta/core/allocator.hpp>
+#include <eta/core/rang.hpp>
+#include <eta/factorization/export.hpp>
+#include <eta/factorization/factorization.hpp>
 
 using namespace eta;
+using namespace eta::factorization;
 using namespace std::string_literals;
 
 auto main(int argc, char ** argv) -> int {

@@ -5,7 +5,7 @@
 #include <tuple>
 #include <vector>
 
-namespace eta {
+namespace eta::factorization {
 
 // -----------------------------------------------------------
 
@@ -189,5 +189,5 @@ auto writeDotFile(std::ostream & os,
 
 // -----------------------------------------------------------
 
-}  // namespace eta
+}  // namespace eta::factorization
 

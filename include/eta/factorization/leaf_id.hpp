@@ -1,6 +1,6 @@
 #pragma once
 
-namespace eta {
+namespace eta::factorization {
 
 struct LeafId {
   public:
@@ -19,4 +19,4 @@ struct LeafId {
     underlying_t _value;
 };
 
-}  // namespace eta
+}  // namespace eta::factorization

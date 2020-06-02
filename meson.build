@@ -19,7 +19,7 @@ eta_factorizer_src = [
 eta_factorizer_lib = static_library('eta_factorizer',
                                eta_factorizer_src,
                                dependencies:[eta_core_dep],
-                               include_directories:['include/eta/trace'])
+                               include_directories:['include/eta/factorization'])
 
 eta_factorizer_dep = declare_dependency(include_directories:['include'],
                                    link_with:[eta_factorizer_lib],

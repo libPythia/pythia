@@ -2,7 +2,7 @@
 
 #include "trace.hpp"
 
-namespace eta {
+namespace eta::factorization {
 
 auto insertNode(Trace & trace, Node * next, Node * last) -> Node *;
 
@@ -19,4 +19,4 @@ class TraceBuilder final {
     Node * _last = nullptr;
 };
 
-}  // namespace eta
+}  // namespace eta::factorization

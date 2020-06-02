@@ -1,12 +1,13 @@
 #pragma once
 
-#include "eta/core/chunk_vector.hpp"
-#include "eta/core/vector.hpp"
+#include <eta/core/chunk_vector.hpp>
+#include <eta/core/vector.hpp>
+
 #include "node.hpp"
 
 // -----------------------------------------------------------
 
-namespace eta {
+namespace eta::factorization {
 
 class Trace final {
   public:
@@ -44,4 +45,4 @@ auto computeIndicesAndOffset(allocator_t & allocator, Trace & trace) -> void;
 
 // -----------------------------------------------------------
 
-}  // namespace eta
+}  // namespace eta::factorization

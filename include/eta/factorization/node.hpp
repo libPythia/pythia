@@ -3,7 +3,8 @@
 #include "leaf_id.hpp"
 #include "parents_tree.hpp"
 
-namespace eta {
+namespace eta::factorization {
+
 // -----------------------------------------------------------
 
 struct keep_previous_t {};
@@ -79,4 +80,4 @@ class Node final {
     };
     unsigned int _loop;
 };
-}  // namespace eta
+}  // namespace eta::factorization

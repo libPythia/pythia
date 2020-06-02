@@ -1,9 +1,9 @@
 #pragma once
 
-#include "eta/core/allocator.hpp"
-#include "eta/core/vector.hpp"
+#include <eta/core/allocator.hpp>
+#include <eta/core/vector.hpp>
 
-namespace eta {
+namespace eta::factorization {
 
 class Node;
 
@@ -50,4 +50,4 @@ class Parents {
     std::size_t _key_count = 0u;
 };
 
-}  // namespace eta
+}  // namespace eta::factorization

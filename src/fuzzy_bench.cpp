@@ -1,16 +1,16 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <eta/core/ProgramOptions.hxx>
+#include <eta/core/allocator.hpp>
+#include <eta/factorization/factorization.hpp>
 #include <mutex>
 #include <random>
 #include <thread>
 #include <vector>
 
-#include "eta/core/ProgramOptions.hxx"
-#include "eta/core/allocator.hpp"
-#include "eta/trace/factorization.hpp"
-
 using namespace eta;
+using namespace eta::factorization;
 
 struct params {
     long alphabet_size;

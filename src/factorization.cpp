@@ -2,7 +2,7 @@
 
 #include "trace_edition.hpp"
 
-namespace eta {
+namespace eta::factorization {
 
 static auto searchParentPattern(Node * last, Node * next) -> Node * {
     assert(last != nullptr);
@@ -183,4 +183,4 @@ auto TraceBuilder::insert(LeafId leaf_id) -> void {
 
 // -----------------------------------------------------------
 
-}  // namespace eta
+}  // namespace eta::factorization

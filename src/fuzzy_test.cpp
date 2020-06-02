@@ -16,13 +16,14 @@
     id(!cond) throw 1; \
     else;
 
-#include "eta/core/ProgramOptions.hxx"
-#include "eta/core/allocator.hpp"
-#include "eta/core/rang.hpp"
-#include "eta/trace/export.hpp"
-#include "eta/trace/factorization.hpp"
+#include <eta/core/ProgramOptions.hxx>
+#include <eta/core/allocator.hpp>
+#include <eta/core/rang.hpp>
+#include <eta/factorization/export.hpp>
+#include <eta/factorization/factorization.hpp>
 
 using namespace eta;
+using namespace eta::factorization;
 
 auto main(int argc, char ** argv) -> int {
     auto parser = po::parser {};

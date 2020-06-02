@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-namespace eta {
+namespace eta::factorization {
 
 // ------------------------------------------------
 
@@ -126,4 +126,4 @@ auto Parents::deinit(allocator_t & alloc) -> void {
 
 // ------------------------------------------------
 
-}  // namespace eta
+}  // namespace eta::factorization

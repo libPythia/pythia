@@ -1,11 +1,10 @@
-#include "eta/trace/parents_tree.hpp"
-
+#include <eta/core/allocator.hpp>
+#include <eta/factorization/parents_tree.hpp>
+#include <eta/factorization/trace.hpp>
 #include <iostream>
 #include <vector>
 
-#include "eta/core/allocator.hpp"
-#include "eta/trace/trace.hpp"
-
+using namespace eta::factorization;
 using namespace eta;
 
 auto show = [](auto const & p) {

@@ -6,7 +6,7 @@
 
 #include "trace.hpp"
 
-namespace eta {
+namespace eta::factorization {
 
 auto linearise(Node const * node) -> std::vector<LeafId>;
 
@@ -18,5 +18,5 @@ auto writeDotFile(std::ostream & os,
                   std::function<std::string(Node const *)> getLabel,
                   std::function<std::string(LeafId)> getLeaf) -> void;
 
-}  // namespace eta
+}  // namespace eta::factorization
 

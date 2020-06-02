@@ -1,6 +1,6 @@
 #include "trace.hpp"
 
-namespace eta {
+namespace eta::factorization {
 
 // -----------------------------------------------------------
 
@@ -102,4 +102,4 @@ auto computeIndicesAndOffset(allocator_t & allocator, Trace & trace) -> void {
 
 // -----------------------------------------------------------
 
-}  // namespace eta
+}  // namespace eta::factorization
