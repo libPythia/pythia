@@ -1,4 +1,4 @@
 [wrap-git]
-url = git@gitlab.com:parallel-and-distributed-systems/eta_core.git
+url = git@gitlab.com:parallel-and-distributed-systems/easytraceanalyzer/eta_core.git
 revision = master
 
