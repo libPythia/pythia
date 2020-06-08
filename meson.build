@@ -63,6 +63,7 @@ pkgc.generate(eta_factorizer_lib,
   name: 'eta_factorizer',
   version: meson.project_version(),
   requires: ['nlc_meta', 'eta_core'],
-  description: 'factorization module for EazyTrace Analyzer'
+  description: 'factorization module for EazyTrace Analyzer',
+  extra_cflags:['-std=c++17'],
 )
 
