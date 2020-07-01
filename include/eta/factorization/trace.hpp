@@ -12,6 +12,7 @@ namespace eta::factorization {
 class Trace final {
   public:
     Trace(allocator_t & alloc);
+    Trace(Trace &&);
     ~Trace();
 
   public:

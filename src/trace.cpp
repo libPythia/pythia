@@ -1,10 +1,21 @@
 #include "trace.hpp"
 
+#include <cassert>
+
 namespace eta::factorization {
 
 // -----------------------------------------------------------
 
 Trace::Trace(allocator_t & alloc) : _allocator { alloc } {}
+
+Trace::Trace(Trace && rhs)
+        : _nodes(std::move(rhs._nodes))
+        , _free_nodes(std::move(rhs._free_nodes))
+        , _leafs(std::move(rhs._leafs))
+        , _allocator(rhs._allocator)
+        , _root(rhs._root) {
+    rhs._root = nullptr;
+}
 
 Trace::~Trace() {
     auto const node_count = _nodes.size();
@@ -93,6 +104,7 @@ auto computeIndicesAndOffset(allocator_t & allocator, Trace & trace) -> void {
     }
 
     auto it = trace.root();
+    assert(it != nullptr);
     it->offset = 0;
     while ((it = it->next) != nullptr)
         it->offset = it->previous->offset + it->previous->size * it->previous->loop();
