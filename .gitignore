@@ -1,3 +1,4 @@
 subprojects/eta_core
 subprojects/nlc_meta
 data
+subprojects/nlc_sanity
