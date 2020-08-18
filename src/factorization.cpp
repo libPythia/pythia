@@ -1,5 +1,8 @@
 #include "factorization.hpp"
 
+#include <cassert>
+#include <nlc/meta/numeric_limits.hpp>
+
 #include "trace_edition.hpp"
 
 namespace eta::factorization {
@@ -168,6 +171,21 @@ auto insertNode(Trace & trace, Node * next, Node * last) -> Node * {
 // -----------------------------------------------------------
 
 TraceBuilder::TraceBuilder(allocator_t & allocator) : _trace { allocator } {}
+
+auto TraceBuilder::createMultipleLeafs(std::size_t count) -> std::pair<LeafId, LeafId> {
+    assert(count > 0);
+    auto constexpr invalid_value = nlc::meta::limits<LeafId::underlying_t>::max;
+    auto first = LeafId { invalid_value };
+    auto last = LeafId { invalid_value };
+
+    for (; count > 0; --count) {
+        last = _trace.newLeaf();
+        if (first.value() == invalid_value)
+            first = last;
+    }
+
+    return { first, last };
+}
 
 auto TraceBuilder::insert(LeafId leaf_id) -> void {
     if (_last != nullptr) {
