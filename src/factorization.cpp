@@ -130,14 +130,18 @@ auto insertNode(Trace & trace, Node * next, Node * last) -> Node * {
             transferValueOrSon(trace, parent_son, parent);
             trace.releaseNode(parent_son);
             insertNode(trace, next, last_pattern_node);
-            return insertNode(trace, parent, previous == parent_next ? parent : previous);
-        } else {
-            // ETA_FACTO_PRINT("Extend");
-            if (parent_next != nullptr)
-                transferNext(parent_next, parent);
-            insertNode(trace, next, last_pattern_node);
-            return insertNode(trace, parent_son, previous == parent_next ? parent : previous);
+            return insertNode(trace, parent, previous);
         }
+
+        // ETA_FACTO_PRINT("Extend");
+        assert(parent_next != nullptr);
+        transferNext(parent_next, parent);
+        insertNode(trace, next, last_pattern_node);
+        if (previous == parent_next) {
+            parent->setLoop(parent->loop() * 2);
+            return parent;
+        }
+        return insertNode(trace, parent_son, previous);
     }
 
     ///////////////////////////////////////

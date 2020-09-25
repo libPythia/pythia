@@ -42,6 +42,10 @@ eta_factorizer_fuzzy_test = executable('fuzzy_test',
                                   'src/fuzzy_test.cpp',
                                   dependencies:[eta_factorizer_dep, thread_dep])
 
+eta_factorizer_exaustive_test = executable('exaustive_test',
+                                  'src/exaustive_test.cpp',
+                                  dependencies:[eta_factorizer_dep, thread_dep])
+
 eta_factorizer_fuzzy_bench = executable('fuzzy_bench',
                                    'src/fuzzy_bench.cpp',
                                    dependencies:[eta_factorizer_dep, thread_dep])
