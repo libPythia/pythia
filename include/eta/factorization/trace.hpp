@@ -1,8 +1,7 @@
 #pragma once
 
-#include <eta/core/chunk_vector.hpp>
-#include <eta/core/vector.hpp>
-
+#include "chunk_vector.hpp"
+#include "vector.hpp"
 #include "node.hpp"
 
 // -----------------------------------------------------------

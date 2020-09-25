@@ -1,8 +1,9 @@
-#include <eta/core/allocator.hpp>
-#include <eta/factorization/parents_tree.hpp>
-#include <eta/factorization/trace.hpp>
 #include <iostream>
 #include <vector>
+
+#include <eta/factorization/allocator.hpp>
+#include <eta/factorization/parents_tree.hpp>
+#include <eta/factorization/trace.hpp>
 
 using namespace eta::factorization;
 using namespace eta;

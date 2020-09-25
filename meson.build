@@ -9,8 +9,6 @@ pkgc = import('pkgconfig')
 
 install_subdir('include/eta', install_dir:get_option('includedir'))
 
-eta_core = subproject('eta_core')
-eta_core_dep = eta_core.get_variable('eta_core_dep')
 thread_dep = dependency('threads')
 
 eta_factorizer_src = [
@@ -22,13 +20,11 @@ eta_factorizer_src = [
 
 eta_factorizer_lib = static_library('eta_factorizer',
                                eta_factorizer_src,
-                               dependencies:[eta_core_dep],
                                include_directories:['include/eta/factorization'],
                                install:true)
 
 eta_factorizer_dep = declare_dependency(include_directories:['include'],
-                                   link_with:[eta_factorizer_lib],
-                                   dependencies:[eta_core_dep])
+                                   link_with:[eta_factorizer_lib])
 
 eta_factorizer_factorize = executable('factorize',
                                  'src/factorize.cpp',
@@ -66,7 +62,6 @@ endforeach
 pkgc.generate(eta_factorizer_lib,
   name: 'eta_factorizer',
   version: meson.project_version(),
-  requires: ['nlc_meta', 'eta_core'],
   description: 'factorization module for EazyTrace Analyzer',
   extra_cflags:['-std=c++17'],
 )

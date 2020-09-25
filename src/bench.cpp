@@ -1,11 +1,13 @@
 #include <chrono>
-#include <eta/core/ProgramOptions.hxx>
-#include <eta/core/allocator.hpp>
-#include <eta/core/rang.hpp>
-#include <eta/factorization/export.hpp>
-#include <eta/factorization/factorization.hpp>
 #include <fstream>
 #include <iostream>
+
+#include <eta/factorization/allocator.hpp>
+#include <eta/factorization/export.hpp>
+#include <eta/factorization/factorization.hpp>
+
+#include "ProgramOptions.hxx"
+#include "rang.hpp"
 
 using namespace eta::factorization;
 using namespace eta;

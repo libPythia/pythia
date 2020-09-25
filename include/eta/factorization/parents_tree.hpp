@@ -1,7 +1,7 @@
 #pragma once
 
-#include <eta/core/allocator.hpp>
-#include <eta/core/vector.hpp>
+#include "allocator.hpp"
+#include "vector.hpp"
 
 namespace eta::factorization {
 
