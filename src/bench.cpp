@@ -1,16 +1,16 @@
 #include <chrono>
-#include <fstream>
-#include <iostream>
-
-#include <eta/factorization/allocator.hpp>
+#include <eta/factorization/check.hpp>
 #include <eta/factorization/export.hpp>
 #include <eta/factorization/factorization.hpp>
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include <sstream>
+#include <string>
+#include <utility>
 
 #include "ProgramOptions.hxx"
 #include "rang.hpp"
-
-using namespace eta::factorization;
-using namespace eta;
 
 auto main(int argc, char ** argv) -> int {
     auto parser = po::parser {};
@@ -33,12 +33,6 @@ auto main(int argc, char ** argv) -> int {
     auto & file_opt = parser["file"].abbreviation('f').type(po::string);
     file_opt.description("Read in the file at the given path instead of readding on stdcin.");
 
-    auto & dot_opt = parser["output-dot"].abbreviation('d').type(po::string);
-    dot_opt.description("Write factorized trace in dot format in file at given path");
-
-    auto & max_insertion_opt = parser["max-insertion-count"].type(po::u32).fallback(0u);
-    max_insertion_opt.description("");
-
     if (!parser(argc, argv)) {
         std::cerr << "errors occurred; aborting\n";
         return -1;
@@ -53,61 +47,41 @@ auto main(int argc, char ** argv) -> int {
         return 0;
     }
 
-    auto const max_insertion = max_insertion_opt.get().u32;
-
-    auto builder = TraceBuilder { std_allocator };
-    auto max_leaf_id = builder.newLeaf();
-
-    auto tmp = static_cast<unsigned int>(0);
-    auto i = 0u;
-    auto duration = std::chrono::nanoseconds { 0u };
-
-    std::cout << "index last_insert_duration full_factorization_duration node_count" << std::endl;
-
-    auto parse = [&](auto & input) {
-        while (input >> tmp && (max_insertion == 0u || i < max_insertion)) {
-            while (tmp > max_leaf_id.value())
-                max_leaf_id = builder.newLeaf();
-            auto const t0 = std::chrono::high_resolution_clock::now();
-            builder.insert(LeafId(tmp));
-            auto const t1 = std::chrono::high_resolution_clock::now();
-            auto const dt = t1 - t0;
-            duration += dt;
-
-            std::cout << i << ' ' << dt.count() << ' ' << duration.count() << ' '
-                      << builder.trace().nodeCount() << std::endl;
-
-            ++i;
-        }
-    };
-
+    std::string line;
     if (file_opt.was_set()) {
-        auto input = std::ifstream {};
-        input.open(file_opt.get().string);
-        if (!input.is_open()) {
-            std::cerr << "Failed to open input file \"" << file_opt.get().string << "\"."
-                      << std::endl;
-            exit(1);
-        }
-        parse(input);
-
+        getline(std::ifstream(file_opt.get().string), line);
     } else {
-        parse(std::cin);
+        getline(std::cin, line);
+    }
+    std::istringstream this_line(line);
+
+    auto g = Grammar {};
+    auto leafs = std::unordered_map<int, Terminal *> {};
+    auto trace = std::vector<Terminal *> {};
+
+    std::cout << "Loading" << std::endl;
+    for (std::istream_iterator<int> begin(this_line), end; begin != end; ++begin) {
+        auto it = leafs.find(*begin);
+        if (it == leafs.end()) {
+            trace.push_back(new_terminal(g, reinterpret_cast<void *>(*begin)));
+            leafs.emplace_hint(it, std::pair { *begin, trace.back() });
+        } else {
+            trace.push_back(it->second);
+        }
     }
 
-    if (dot_opt.was_set()) {
-        auto output = std::ofstream {};
-        output.open(dot_opt.get().string);
-        if (!output.is_open()) {
-            std::cerr << "Failed to open output file \"" << dot_opt.get().string << "\"."
-                      << std::endl;
-            exit(1);
-        }
+    if (!trace.empty()) {
+        std::cout << "Factorization" << std::endl;
 
-        writeDotFile(
-                output,
-                builder.trace().root(),
-                [](auto &&) { return ""; },
-                [](auto && id) { return std::to_string(id.value()); });
+        auto const t0 = std::chrono::high_resolution_clock::now();
+
+        for (auto const n : trace)
+            insertSymbol(g, n);
+
+        auto const t1 = std::chrono::high_resolution_clock::now();
+        auto const reduction_duration = std::chrono::duration<double>(t1 - t0);
+
+        std::cout << "\nTrace of " << trace.size() << " events between " << leafs.size()
+                  << " was reduced in " << reduction_duration.count() << "seconds." << std::endl;
     }
 }

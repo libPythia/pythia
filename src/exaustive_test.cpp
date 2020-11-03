@@ -2,6 +2,9 @@
 #include <cassert>
 #include <chrono>
 #include <ctime>
+#include <eta/factorization/check.hpp>
+#include <eta/factorization/export.hpp>
+#include <eta/factorization/factorization.hpp>
 #include <iostream>
 #include <mutex>
 #include <random>
@@ -9,15 +12,9 @@
 #include <thread>
 #include <vector>
 
-#include <eta/factorization/allocator.hpp>
-#include <eta/factorization/export.hpp>
-#include <eta/factorization/factorization.hpp>
-
 #include "ProgramOptions.hxx"
+#include "helpers.hpp"
 #include "rang.hpp"
-
-using namespace eta;
-using namespace eta::factorization;
 
 auto main(int argc, char ** argv) -> int {
     auto parser = po::parser {};
@@ -87,159 +84,70 @@ auto main(int argc, char ** argv) -> int {
     // auto threads = std::vector<std::thread> {};
     // auto out_mutex = std::mutex {};
 
-    auto reportError = [&](auto const & trace, auto const & res) {
-        ++error_count;
-        if (silent)
-            return;
+    auto reportError =
+            [&](std::string const & input, std::string const & output, auto const & data) {
+                ++error_count;
+                if (silent)
+                    return;
 
-        // auto lock = std::unique_lock(out_mutex);
-        if (!no_color)
-            std::cout << rang::fg::red << rang::style::bold;
-        if (print_valid)
-            std::cout << '-';
-        for (auto const c : trace)
-            std::cout << (char)('a' + c);
-        std::cout << ':';
-        if (!no_color)
-            std::cout << rang::fg::reset << rang::style::reset;
-        if constexpr (std::is_same<std::decay_t<decltype(res)>, char const *>::value)
-            std::cout << res;
-        else if constexpr (std::is_same<decltype(res), std::string const &>::value)
-            std::cout << res;
-        else {
-            for (auto const c : res)
-                std::cout << (char)('a' + c.value());
-        }
-        std::cout << std::endl;
-    };
+                // auto lock = std::unique_lock(out_mutex);
+                if (!no_color)
+                    std::cout << rang::fg::red << rang::style::bold;
+                if (print_valid)
+                    std::cout << '-';
+                std::cout << input << ':';
+                if (!no_color)
+                    std::cout << rang::fg::reset << rang::style::reset;
+                std::cout << output << " (" << data << ')' << std::endl;
+            };
 
-    auto reportSucess = [&](auto const & trace, auto const & res) {
+    auto reportSucess = [&](std::string const & input, std::string const & output) {
         // auto lock = std::unique_lock(out_mutex);
         if (!no_color)
             std::cout << rang::fg::green << rang::style::bold;
-        std::cout << '+';
-        for (auto const c : trace)
-            std::cout << (char)('a' + c);
-        std::cout << ':';
+        std::cout << '+' << input << ':';
         if (!no_color)
             std::cout << rang::fg::reset << rang::style::reset;
-        std::cout << res << std::endl;
+        std::cout << output << std::endl;
     };
 
-    auto isValid = [&](auto const & trace) {
-        auto size = trace.nodeCount();
-        for (auto i = 0u; i < size; ++i) {
-            auto const node = &trace[i];
-            if (node == trace.root()) {
-                if (node->previous != nullptr || node->isLeaf() ||
-                        node->son() == nullptr || node->parents.size() > 0u) {
-                    std::cerr << 1 << std::endl;
-                    return false;
-                }
-            } else {
-                if (node->isLeaf()) {
-                    if (/*node->parents.size() == 0 ||*/ node->previous != nullptr ||
-                            node->next != nullptr || node->son() != nullptr) {
-                        std::cerr << 2 << ' ' << node->parents.size() << '[';
-                        for (auto && p : node->parents)
-                            std::cerr << p << ", ";
-                        std::cerr << "] " << node->previous << ' ' << node->next << ' '
-                            << node->son() << node->value().value() << std::endl;
-                        assert(false);
-                        return false;
-                    }
-                } else if (node->son() == nullptr) {
-                    // The node is invalid
-                    if (node->parents.size() > 0 || node->previous != nullptr ||
-                            node->next != nullptr) {
-                        std::cerr << 3 << std::endl;
-                        return false;
-                    }
-                } else if (node->previous == nullptr) {  // Node is pattern
-                    auto occurences = 0u;
-                    for (auto const parent : node->parents)
-                        occurences += parent->loop();
-                    if (occurences < 2 || node->next == nullptr) {
-                        std::cerr << 4 << std::endl;
-                        return false;
-                    }
-                    if (node->loop() == 1 && node->next == nullptr) {
-                        std::cerr << 5 << std::endl;
-                        return false;
-                    }
-                } else if (node->parents.size() != 0) {
-                    std::cerr << 6 << std::endl;
-                    return false;
-                }
-
-                if (node->next != nullptr && node->next->son() == node->son()) {
-                    std::cerr << 6 << std::endl;
-                    return false;
-                }
-            }
-        }
-        return true;
-    };
-
-    auto isConform = [&](auto const & input, auto const & res) {
-        auto const size = res.size();
-        if (input.size() != size)
-            return false;
-        for (auto i = 0u; i < size; ++i)
-            if (res[i].value() != input[i])
-                return false;
-        return true;
-    };
-
-    auto trace = std::vector<unsigned char>(trace_size, 0);
+    auto const t0 = std::chrono::high_resolution_clock::now();
+    auto trace = std::string(trace_size, 'a');
     while (true) {
-
         try {
+            auto g = Grammar {};
+            build_grammar_from_string(g, trace);
 
-            auto builder = TraceBuilder { std_allocator };
-            for (auto i = 0u; i < alphabet_size; ++i) {
-                [[maybe_unused]] auto const leafId = builder.newLeaf();
-                assert(leafId.value() == i);
-            }
+            auto const output = get_string_from_grammar(g);
 
-            for (auto const  c : trace) {
-                builder.insert(LeafId(c));
-            }
-            auto const res = linearise(builder.trace().root());
-
-
-            if (!isConform(trace, res)) {
-                reportError(trace, toStr(builder.trace().root(), true, [](auto id) {
-                            return std::string { (char)('a' + id.value()) };
-                            }));
-            } else if (!isValid(builder.trace())) {
-                reportError(trace, toStr(builder.trace().root(), true, [](auto id) {
-                            return std::string { (char)('a' + id.value()) };
-                            }));
+            if (!check_graph_integrity(g)) {
+                reportError(trace, output, "Graph is corrupted");
+            } else if (!check_grammar_constraints(g)) {
+                reportError(trace, output, "Grammar constraints are violated.");
+            } else if (output != trace) {
+                reportError(trace, output, "Output and input differ.");
             } else {
                 ++valid_count;
                 auto const curr_time = std::chrono::system_clock::now();
-                if (print_valid || std::chrono::duration<double>(curr_time - last_time).count() > 1.) {
-                    reportSucess(trace, toStr(builder.trace().root(), true, [](auto id) {
-                                return std::string { (char)('a' + id.value()) };
-                                }));
+                if (print_valid ||
+                    std::chrono::duration<double>(curr_time - last_time).count() > 1.) {
+                    reportSucess(trace, output);
                     last_time = curr_time;
                 }
             }
-        } catch (...) { reportError(trace, "{exception}"); }
+        } catch (...) { reportError(trace, "", "{exception}"); }
 
         if (error_count == max_error_count)
             break;
 
-        if ([&](){
-                auto i = 0;
+        if ([&]() {
+                auto i = 0u;
                 while (i < trace_size) {
                     ++trace[i];
-                    if (trace[i] == alphabet_size) {
-                        trace[i] = 0;
+                    if (trace[i] == 'a' + std::min(alphabet_size, i + 1u)) {
+                        trace[i] = 'a';
                         ++i;
-                    }
-                    else
+                    } else
                         return false;
                 }
                 return true;
@@ -250,7 +158,9 @@ auto main(int argc, char ** argv) -> int {
     // for (auto & t : threads)
     //     t.join();
 
+    auto const dt = std::chrono::high_resolution_clock::now() - t0;
     std::cerr << "Finished with " << error_count << " errors over " << (valid_count + error_count)
-        << " tests." << std::endl;
+              << " tests in " << std::chrono::duration_cast<std::chrono::seconds>(dt).count()
+              << "s." << std::endl;
 }
 

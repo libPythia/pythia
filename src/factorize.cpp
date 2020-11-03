@@ -12,15 +12,14 @@
 
 bool eta_factorization_print_debugs = false;
 
-#include <eta/factorization/allocator.hpp>
+#include <eta/factorization/check.hpp>
 #include <eta/factorization/export.hpp>
 #include <eta/factorization/factorization.hpp>
 
 #include "ProgramOptions.hxx"
+#include "helpers.hpp"
 #include "rang.hpp"
 
-using namespace eta;
-using namespace eta::factorization;
 using namespace std::string_literals;
 
 auto main(int argc, char ** argv) -> int {
@@ -29,11 +28,17 @@ auto main(int argc, char ** argv) -> int {
     auto & dump_dot_opt = parser["dot"].abbreviation('d');
     dump_dot_opt.description("Print result under dot format.");
 
+    auto & display_grammar_opt = parser["grammar"].abbreviation('g');
+    display_grammar_opt.description("Print result as a grammar.");
+
     auto & dump_debug_opt = parser["debug"];
     dump_debug_opt.description("Print debug information instead of factorized trace");
 
     auto & help_opt = parser["help"].abbreviation('h');
     help_opt.description("Print this help.");
+
+    auto & check_opt = parser["check"].abbreviation('c');
+    check_opt.description("Active checks on grammar produced");
 
     auto & no_color_opt = parser["no-color"];
     no_color_opt.description("Don't use color in ouput");
@@ -62,9 +67,11 @@ auto main(int argc, char ** argv) -> int {
 
     auto const input_from_stdcin = !input_opt.was_set();
     auto const dump_dot_format = dump_dot_opt.was_set();
+    auto const display_grammar = display_grammar_opt.was_set();
     eta_factorization_print_debugs = dump_debug_opt.was_set();
     auto const print_input = print_input_opt.was_set();
     auto const no_color = no_color_opt.was_set();
+    auto const check = check_opt.was_set();
 
     // TODO incompatibilités
 
@@ -86,67 +93,58 @@ auto main(int argc, char ** argv) -> int {
             }
         }
         if (!b)
-            std::cerr << "No input" << std::endl;
+            std::cerr << "\nNo input" << std::endl;
         ;
     };
 
     for_each_input([&](std::string const & input) {
-        auto builder = TraceBuilder { std_allocator };
+        auto g = Grammar {};
 
-        auto leafs = std::vector<std::pair<bool, LeafId>> {};
+        build_grammar_from_string(g, input);
 
-        auto getLeaf = [&leafs](LeafId id) -> std::string {
-            auto index = 0u;
-            for (auto [is_present, leaf] : leafs) {
-                if (is_present && leaf == id) {
-                    assert(is_present);
-                    return std::string { static_cast<char>('a' + index) };
-                }
-
-                ++index;
-            }
-            return "¤";
-        };
-
-        for (auto c : input) {
-            auto const index = static_cast<std::size_t>(c - 'a');
-            while (leafs.size() <= index)
-                leafs.push_back(std::make_pair(false, LeafId(0)));
-
-            auto & [is_present, id] = leafs[index];
-            if (!is_present) {
-                id = builder.newLeaf();
-                is_present = true;
-            }
-            if (eta_factorization_print_debugs)
-                std::cerr << "insert : " << c << " (";
-            builder.insert(id);
-            if (eta_factorization_print_debugs) {
-                std::cerr << ") -> " << toStr(builder.trace().root(), true, getLeaf);
-                std::cerr << std::endl;
-            }
+        if (print_input) {
+            if (!no_color)
+                std::cout << rang::fg::blue << rang::style::bold;
+            std::cout << input << ':';
+            if (!no_color)
+                std::cout << rang::style::reset << rang::fg::reset;
         }
 
-        computeIndicesAndOffset(std_allocator, builder.trace());
+        if (display_grammar) {
+            print_grammar(g, std::cout, [](Terminal const * t, std::ostream & os) {
+                os << static_cast<char>(reinterpret_cast<size_t>(t->payload));
+            });
+        } else {
+            print_reduced_trace(g, std::cout, [](Terminal const * t, std::ostream & os) {
+                os << static_cast<char>(reinterpret_cast<size_t>(t->payload));
+            });
+        }
 
-        auto nodeId = std::map<Node const *, int> {};
-        for (auto i = 0u; i < builder.trace().nodeCount(); ++i)
-            nodeId[&builder.trace()[i]] = i;
-
-        auto getId = [&nodeId](Node const * ptr) { return std::to_string(nodeId.at(ptr)); };
-
-        if (dump_dot_format)
-            writeDotFile(std::cout, builder.trace().root(), getId, getLeaf);
-        else {
-            if (print_input) {
+        if (check) {
+            if (!check_grammar_constraints(g)) {
                 if (!no_color)
                     std::cout << rang::fg::red << rang::style::bold;
-                std::cout << input << ':';
+                std::cout << "\nGrammar constraints not respected.";
                 if (!no_color)
                     std::cout << rang::style::reset << rang::fg::reset;
             }
-            std::cout << toStr(builder.trace().root(), true, getLeaf) << std::endl;
+            if (!check_graph_integrity(g)) {
+                if (!no_color)
+                    std::cout << rang::fg::red << rang::style::bold;
+                std::cout << "\nGraph integrity is compromised.";
+                if (!no_color)
+                    std::cout << rang::style::reset << rang::fg::reset;
+            }
+            if (get_string_from_grammar(g) != input) {
+                if (!no_color)
+                    std::cout << rang::fg::red << rang::style::bold;
+                std::cout << "\nInput and linearised trace from grammar are different.";
+                if (!no_color)
+                    std::cout << rang::style::reset << rang::fg::reset;
+            }
         }
+
+        std::cout << std::endl;
     });
 }
 
