@@ -25,6 +25,10 @@ using namespace std::string_literals;
 auto main(int argc, char ** argv) -> int {
     auto parser = po::parser {};
 
+    // input settings
+
+    // output settings
+
     auto & dump_dot_opt = parser["dot"].abbreviation('d');
     dump_dot_opt.description("Print result under dot format.");
 
@@ -114,6 +118,14 @@ auto main(int argc, char ** argv) -> int {
             print_grammar(g, std::cout, [](Terminal const * t, std::ostream & os) {
                 os << static_cast<char>(reinterpret_cast<size_t>(t->payload));
             });
+        } else if (dump_dot_format) {
+            print_dot_file(
+                    g,
+                    std::cout,
+                    [](Terminal const * t, std::ostream & os) {
+                        os << static_cast<char>(reinterpret_cast<size_t>(t->payload));
+                    },
+                    print_input);
         } else {
             print_reduced_trace(g, std::cout, [](Terminal const * t, std::ostream & os) {
                 os << static_cast<char>(reinterpret_cast<size_t>(t->payload));

@@ -115,6 +115,7 @@ struct Grammar {
 
 auto new_terminal(Grammar & g, void * payload) -> Terminal *;
 auto insertSymbol(Grammar & g, Terminal * n) -> void;
+auto linearise_grammar(Grammar const & g) -> std::vector<Terminal const *>;
 
 // ----------------------------------------------------------
 

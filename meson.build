@@ -11,10 +11,13 @@ install_subdir('include/eta', install_dir:get_option('includedir'))
 
 thread_dep = dependency('threads')
 
+#----------------------------------------------------------------
+
 eta_factorizer_src = [
-    'src/check.cpp',
-    'src/export.cpp',
-    'src/factorization.cpp',
+    'src/factorization/bin_file.cpp',
+    'src/factorization/check.cpp',
+    'src/factorization/export.cpp',
+    'src/factorization/factorization.cpp',
 ]
 
 eta_factorizer_lib = static_library('eta_factorizer',
@@ -25,19 +28,44 @@ eta_factorizer_lib = static_library('eta_factorizer',
 eta_factorizer_dep = declare_dependency(include_directories:['include'],
                                    link_with:[eta_factorizer_lib])
 
-eta_factorizer_factorize = executable('factorize',
+#----------------------------------------------------------------
+
+utils_dep = declare_dependency(include_directories:['src/utils'])
+
+#----------------------------------------------------------------
+
+eta_factorizer_factorize = executable('reduce',
                                  'src/factorize.cpp',
-                                 dependencies:[eta_factorizer_dep])
+                                 dependencies:[eta_factorizer_dep, utils_dep],
+                                 install:true)
+
+#----------------------------------------------------------------
 
 eta_factorizer_bench = executable('bench',
                              'src/bench.cpp',
-                             dependencies:[eta_factorizer_dep],
+                             dependencies:[eta_factorizer_dep, utils_dep],
                             )
+
+#----------------------------------------------------------------
 
 eta_factorizer_exaustive_test = executable('exaustive_test',
                                   'src/exaustive_test.cpp',
-                                  dependencies:[eta_factorizer_dep, thread_dep])
+                                  dependencies:[eta_factorizer_dep, thread_dep, utils_dep])
 
+#----------------------------------------------------------------
+
+eta_exe_src = [
+  'src/eta/colors.cpp',
+  'src/eta/input.cpp',
+  'src/eta/main.cpp',
+  'src/eta/settings.cpp',
+]
+
+eta_exe_deps = [eta_factorizer_dep, utils_dep]
+
+eta_exe = executable('eta', eta_exe_src, dependencies:eta_exe_deps)
+
+#----------------------------------------------------------------
 
 # pkgconfig export
 pkgc.generate(eta_factorizer_lib,
