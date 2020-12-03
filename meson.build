@@ -34,13 +34,6 @@ utils_dep = declare_dependency(include_directories:['src/utils'])
 
 #----------------------------------------------------------------
 
-eta_factorizer_factorize = executable('reduce',
-                                 'src/factorize.cpp',
-                                 dependencies:[eta_factorizer_dep, utils_dep],
-                                 install:true)
-
-#----------------------------------------------------------------
-
 eta_factorizer_bench = executable('bench',
                              'src/bench.cpp',
                              dependencies:[eta_factorizer_dep, utils_dep],
