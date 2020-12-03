@@ -1,9 +1,13 @@
 #include "bin_file.hpp"
 
+#include <stdint.h>
+
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <istream>
 #include <limits>
+#include <locale>
 #include <ostream>
 #include <sstream>
 #include <unordered_map>
@@ -25,33 +29,40 @@
  *
  */
 
-using bin_size_t = unsigned short;
-
-static auto read_nb(std::istream & is) -> bin_size_t {
+template <typename bin_size_t> static auto read_nb(std::istream & is) -> bin_size_t {
     auto res = bin_size_t(0);
     is.read(reinterpret_cast<char *>(&res), sizeof(res));
     return res;
 }
 
-static auto write_nb(std::ostream & os, bin_size_t n) -> void {
+template <typename bin_size_t> static auto write_nb(std::ostream & os, bin_size_t n) -> void {
     os.write(reinterpret_cast<char *>(&n), sizeof(n));
 }
 
-auto print_bin_file(Grammar const & g, std::ostream & os, terminal_printer const & printer)
-        -> void {
+template <typename bin_size_t>
+static auto constexpr loop_sentinel = std::numeric_limits<bin_size_t>::max() - 1;
+template <typename bin_size_t>
+static auto constexpr end_sentinel = std::numeric_limits<bin_size_t>::max();
+
+using loop_size_t = std::uint32_t;
+
+template <typename bin_size_t>
+static auto print_bin_file_impl(Grammar const & g,
+                                std::ostream & os,
+                                terminal_printer const & printer) -> void {
     auto const & terminals = g.terminals;
     auto const & nonterminals = g.nonterminals.in_use_nonterminals();
 
     std::unordered_map<Symbol const *, bin_size_t> indices;
 
-    write_nb(os, terminals.size());
-    write_nb(os, nonterminals.size());
+    write_nb<bin_size_t>(os, terminals.size());
+    write_nb<bin_size_t>(os, nonterminals.size());
 
     for (auto const & terminal : terminals) {
         auto ss = std::stringstream {};
         printer(terminal.get(), ss);
         auto const str = ss.str();
-        write_nb(os, str.size());
+        write_nb<bin_size_t>(os, str.size());
         os.write(str.c_str(), str.size());
         indices.emplace(terminal.get(), indices.size());
     }
@@ -66,30 +77,34 @@ auto print_bin_file(Grammar const & g, std::ostream & os, terminal_printer const
         auto node = nonterminal->first;
         while (true) {
             assert(node->repeats > 0);
-            write_nb(os, node->repeats);
-            write_nb(os, indices.at(node->maps_to));
+            if (node->repeats > 1) {
+                write_nb<bin_size_t>(os, loop_sentinel<bin_size_t>);
+                write_nb<loop_size_t>(os, node->repeats);
+            }
+            write_nb<bin_size_t>(os, indices.at(node->maps_to));
             if (!is_node(node->next))
                 break;
             node = as_node(node->next);
         }
-        write_nb(os, 0);
+        write_nb<bin_size_t>(os, end_sentinel<bin_size_t>);
     }
 
-    write_nb(os, indices.at(g.root));
+    write_nb<bin_size_t>(os, indices.at(g.root));
 }
 
-auto load_bin_file(Grammar & grammar, std::istream & is)
+template <typename bin_size_t>
+static auto load_bin_file_impl(Grammar & grammar, std::istream & is)
         -> std::unordered_map<Terminal const *, std::string> {
     auto names = std::unordered_map<Terminal const *, std::string> {};
 
-    auto const terminals_count = read_nb(is);
-    auto const nonterminals_count = read_nb(is);
+    auto const terminals_count = read_nb<bin_size_t>(is);
+    auto const nonterminals_count = read_nb<bin_size_t>(is);
 
     auto symbols = std::vector<Symbol *>(terminals_count + nonterminals_count, nullptr);
 
     for (auto i = 0u; i < terminals_count; ++i) {
         auto const terminal = new_terminal(grammar, nullptr);
-        auto const size = read_nb(is);
+        auto const size = read_nb<bin_size_t>(is);
         auto str = std::vector<char>(size, 0);
         is.read(&*str.begin(), size);
         names.emplace(terminal, std::string(str.begin(), str.end()));
@@ -104,16 +119,23 @@ auto load_bin_file(Grammar & grammar, std::istream & is)
         auto nonterminal = static_cast<NonTerminal *>(symbols[i]);
         auto previous_node = static_cast<Node *>(nullptr);
         while (true) {
-            auto const repeats = read_nb(is);
-            if (repeats == 0) {
+            auto maps_to = read_nb<bin_size_t>(is);
+            if (maps_to == end_sentinel<bin_size_t>) {
                 assert(previous_node != nullptr);
                 previous_node->maps_to->occurences_without_successor.insert(previous_node);
                 previous_node->next = nonterminal;
                 nonterminal->last = previous_node;
                 break;
             }
+
+            auto repeats = static_cast<loop_size_t>(1);
+            if (maps_to == loop_sentinel<bin_size_t>) {
+                repeats = read_nb<loop_size_t>(is);
+                maps_to = read_nb<bin_size_t>(is);
+            }
+
             auto const node = grammar.nodes.new_node();
-            node->maps_to = symbols[read_nb(is)];
+            node->maps_to = symbols[maps_to];
             node->repeats = repeats;
 
             if (previous_node == nullptr) {
@@ -130,8 +152,38 @@ auto load_bin_file(Grammar & grammar, std::istream & is)
         }
     }
 
-    grammar.root = as_nonterminal(symbols.at(read_nb(is)));
+    grammar.root = as_nonterminal(symbols.at(read_nb<bin_size_t>(is)));
 
     return names;
 }
 
+auto print_bin_file(Grammar const & g, std::ostream & os, terminal_printer const & printer)
+        -> void {
+    auto node_count = g.terminals.size() + g.nonterminals.in_use_nonterminals().size();
+
+    // 'max' and 'max - 1' is reserved so we have one less representable value
+    if (node_count <= std::numeric_limits<std::uint8_t>::max() - 2) {
+        write_nb<std::uint8_t>(os, 1);
+        print_bin_file_impl<std::uint8_t>(g, os, printer);
+    } else if (node_count <= std::numeric_limits<std::uint16_t>::max() - 2) {
+        write_nb<std::uint8_t>(os, 2);
+        print_bin_file_impl<std::uint16_t>(g, os, printer);
+    } else if (node_count <= std::numeric_limits<std::uint32_t>::max() - 2) {
+        write_nb<std::uint8_t>(os, 3);
+        print_bin_file_impl<std::uint32_t>(g, os, printer);
+    } else {
+        write_nb<std::uint8_t>(os, 4);
+        print_bin_file_impl<std::uint64_t>(g, os, printer);
+    }
+}
+
+auto load_bin_file(Grammar & grammar, std::istream & is)
+        -> std::unordered_map<Terminal const *, std::string> {
+    switch (read_nb<std::uint8_t>(is)) {
+        case 1: return load_bin_file_impl<std::uint8_t>(grammar, is);
+        case 2: return load_bin_file_impl<std::uint16_t>(grammar, is);
+        case 3: return load_bin_file_impl<std::uint32_t>(grammar, is);
+        case 4: return load_bin_file_impl<std::uint64_t>(grammar, is);
+        default: assert(false);
+    }
+}
