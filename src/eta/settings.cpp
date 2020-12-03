@@ -71,6 +71,7 @@ static auto print_help() -> void {
     print_option('d', "dot", "Produce output under dot format.");
     print_option('g', "grammar", "Format output as a grammar.");
     print_option('B', "binary-output", "Use binary format for output");
+    print_option('e', "expend", "Print original input");
     print_option(0, "no-color", "Don't use color and formating in output.");
 
     std::cerr << '\n';
@@ -79,6 +80,11 @@ static auto print_help() -> void {
     PRINT_ERROR(INPUT_OUTPUT_MISMATCH, "Too many inputs for output mode.");
     PRINT_ERROR(CHECK_FAILED, "Data structure checks failed. Report this as a bug.");
     PRINT_ERROR(NOT_IMPLEMENTED_FEATURE, "The requested feature is not implemented yet.");
+}
+
+auto count_bools() { return 0; }
+template <typename... T> auto count_bools(bool b, T &&... others) {
+    return (b ? 1 : 0) + count_bools(others...);
 }
 
 auto parse_settings(int argc, char ** argv) -> settings_t {
@@ -101,6 +107,7 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     auto & grammar_opt = parser["grammar"].abbreviation('g');
     auto & binary_output_opt = parser["binary-output"].abbreviation('B');
     auto & no_color_opt = parser["no-color"];
+    auto & expend_opt = parser["expend"].abbreviation('e');
 
     if (!parser(argc, argv)) {
         exit(errors_t::BAD_ARGUMENTS);
@@ -122,6 +129,7 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     auto const dot = dot_opt.was_set();
     auto const grammar = grammar_opt.was_set();
     auto const binary_output = binary_output_opt.was_set();
+    auto const expend = expend_opt.was_set();
 
     // general settings
     settings.debug = debug;
@@ -132,7 +140,7 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
         rang::setControlMode(rang::control::Auto);
 
     // input settings
-    if ((non_printable && lines) || (lines && binary_input) || (non_printable && binary_input)) {
+    if (count_bools(non_printable, lines, binary_input) > 1) {
         set_color(std::cerr, color_t::red);
         std::cerr << "error: ";
         set_color(std::cerr, color_t::standard);
@@ -151,11 +159,11 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
 
     // output settings
 
-    if ((dot && grammar) || (grammar && binary_output) || (dot && binary_output)) {
+    if (count_bools(dot, grammar, expend, binary_output) > 1) {
         set_color(std::cerr, color_t::red);
         std::cerr << "error: ";
         set_color(std::cerr, color_t::standard);
-        std::cerr << "--dot, --grammar and --binary-output are mutually exclusive.\n\n";
+        std::cerr << "--dot, --expend, --grammar and --binary-output are mutually exclusive.\n\n";
         print_help();
         exit(errors_t::BAD_ARGUMENTS);
     }
@@ -166,6 +174,8 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
         settings.output_mode = output_t::grammar;
     else if (binary_output)
         settings.output_mode = output_t::binary;
+    else if (expend)
+        settings.output_mode = output_t::expend;
     else
         settings.output_mode = output_t::reduced;
 

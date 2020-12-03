@@ -55,6 +55,10 @@ auto main(int argc, char ** argv) -> int {
             case output_t::binary: {
                 print_bin_file(grammar, std::cout, print_terminal);
             } break;
+            case output_t::expend: {
+                print_input();
+                print_trace(grammar, std::cout, print_terminal);
+            } break;
         }
 
         std::cout << std::endl;

@@ -12,6 +12,7 @@ enum class output_t {
     dot,
     grammar,
     binary,
+    expend,
 };
 
 struct settings_t final {
