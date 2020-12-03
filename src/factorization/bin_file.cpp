@@ -93,21 +93,17 @@ static auto print_bin_file_impl(Grammar const & g,
 }
 
 template <typename bin_size_t>
-static auto load_bin_file_impl(Grammar & grammar, std::istream & is)
-        -> std::unordered_map<Terminal const *, std::string> {
-    auto names = std::unordered_map<Terminal const *, std::string> {};
-
+static auto load_bin_file_impl(Grammar & grammar, std::istream & is) -> void {
     auto const terminals_count = read_nb<bin_size_t>(is);
     auto const nonterminals_count = read_nb<bin_size_t>(is);
 
     auto symbols = std::vector<Symbol *>(terminals_count + nonterminals_count, nullptr);
 
     for (auto i = 0u; i < terminals_count; ++i) {
-        auto const terminal = new_terminal(grammar, nullptr);
         auto const size = read_nb<bin_size_t>(is);
-        auto str = std::vector<char>(size, 0);
-        is.read(&*str.begin(), size);
-        names.emplace(terminal, std::string(str.begin(), str.end()));
+        auto name = static_cast<char *>(malloc(size + 1));
+        is.read(name, size);
+        auto const terminal = new_terminal(grammar, name);
         symbols[i] = terminal;
     }
 
@@ -153,8 +149,6 @@ static auto load_bin_file_impl(Grammar & grammar, std::istream & is)
     }
 
     grammar.root = as_nonterminal(symbols.at(read_nb<bin_size_t>(is)));
-
-    return names;
 }
 
 auto print_bin_file(Grammar const & g, std::ostream & os, terminal_printer const & printer)
@@ -177,13 +171,12 @@ auto print_bin_file(Grammar const & g, std::ostream & os, terminal_printer const
     }
 }
 
-auto load_bin_file(Grammar & grammar, std::istream & is)
-        -> std::unordered_map<Terminal const *, std::string> {
+auto load_bin_file(Grammar & grammar, std::istream & is) -> void {
     switch (read_nb<std::uint8_t>(is)) {
-        case 1: return load_bin_file_impl<std::uint8_t>(grammar, is);
-        case 2: return load_bin_file_impl<std::uint16_t>(grammar, is);
-        case 3: return load_bin_file_impl<std::uint32_t>(grammar, is);
-        case 4: return load_bin_file_impl<std::uint64_t>(grammar, is);
+        case 1: load_bin_file_impl<std::uint8_t>(grammar, is); break;
+        case 2: load_bin_file_impl<std::uint16_t>(grammar, is); break;
+        case 3: load_bin_file_impl<std::uint32_t>(grammar, is); break;
+        case 4: load_bin_file_impl<std::uint64_t>(grammar, is); break;
         default: assert(false);
     }
 }

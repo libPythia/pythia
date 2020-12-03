@@ -1,9 +1,9 @@
 #pragma once
 
-#include <eta/factorization/factorization.hpp>
 #include <iostream>
 
 #include "colors.hpp"
+#include "data.hpp"
 #include "settings.hpp"
 
 inline auto print_error(char const * txt) -> void {

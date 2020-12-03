@@ -41,7 +41,7 @@ auto get_input(Grammar & g, settings_t const & settings) -> input_state {
                 auto const terminal = [&]() {
                     auto & res = terminals[c];
                     if (res == nullptr)
-                        res = new_terminal(g, reinterpret_cast<void *>(c));
+                        res = new_terminal(g, Data::make_terminal_data(c));
                     return res;
                 }();
                 if (settings.check)
@@ -92,7 +92,7 @@ auto get_input(Grammar & g, settings_t const & settings) -> input_state {
                 auto const terminal = [&]() {
                     auto & res = terminals[c];
                     if (res == nullptr)
-                        res = new_terminal(g, reinterpret_cast<void *>(c));
+                        res = new_terminal(g, Data::make_terminal_data(c));
                     return res;
                 }();
                 if (settings.check)
@@ -124,11 +124,7 @@ auto get_input(Grammar & g, settings_t const & settings) -> input_state {
             return input_state::last;
         } break;
         case input_t::binary: {
-            auto leafs = load_bin_file(g, std::cin);
-
-            for (auto const [terminal, name] : leafs)
-                const_cast<Terminal *>(terminal)->payload =
-                        reinterpret_cast<void *>(static_cast<size_t>(name[0]));
+            load_bin_file(g, std::cin);
 
             if (settings.check)
                 integrity_checks(g, settings);

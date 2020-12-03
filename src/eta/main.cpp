@@ -1,6 +1,5 @@
 #include <eta/factorization/bin_file.hpp>
 #include <eta/factorization/export.hpp>
-#include <eta/factorization/factorization.hpp>
 #include <iostream>
 
 #include "colors.hpp"
@@ -16,8 +15,8 @@ auto main(int argc, char ** argv) -> int {
 
     auto input_count = 0u;
     while (true) {
-        auto grammar = Grammar {};
-        auto state = get_input(grammar, settings);
+        auto data = Data {};
+        auto state = get_input(data.grammar, settings);
 
         if (state == input_state::none)
             break;
@@ -28,13 +27,13 @@ auto main(int argc, char ** argv) -> int {
         }
 
         auto print_terminal = [](Terminal const * t, std::ostream & os) {
-            os << static_cast<char>(reinterpret_cast<size_t>(t->payload));
+            os << Data::get_printable_data(t);
         };
 
         auto print_input = [&]() {
             if (settings.print_input) {
                 set_color(std::cout, color_t::green);
-                print_trace(grammar, std::cout, print_terminal);
+                print_trace(data.grammar, std::cout, print_terminal);
                 set_color(std::cout, color_t::standard);
                 std::cout << ": ";
             }
@@ -43,21 +42,24 @@ auto main(int argc, char ** argv) -> int {
         switch (settings.output_mode) {
             case output_t::reduced: {
                 print_input();
-                print_reduced_trace(grammar, std::cout, print_terminal);
+                print_reduced_trace(data.grammar, std::cout, print_terminal);
             } break;
             case output_t::dot: {
-                print_dot_file_grammar(grammar, std::cout, print_terminal, settings.print_input);
+                print_dot_file_grammar(data.grammar,
+                                       std::cout,
+                                       print_terminal,
+                                       settings.print_input);
             } break;
             case output_t::grammar: {
                 print_input();
-                print_grammar(grammar, std::cout, print_terminal);
+                print_grammar(data.grammar, std::cout, print_terminal);
             } break;
             case output_t::binary: {
-                print_bin_file(grammar, std::cout, print_terminal);
+                print_bin_file(data.grammar, std::cout, print_terminal);
             } break;
             case output_t::expend: {
                 print_input();
-                print_trace(grammar, std::cout, print_terminal);
+                print_trace(data.grammar, std::cout, print_terminal);
             } break;
         }
 
