@@ -133,7 +133,7 @@ auto print_grammar(Grammar const & g, std::ostream & os, terminal_printer const 
             auto n = reinterpret_cast<Base *>(nonterminal->first);
             while (n != nonterminal) {
                 auto const node = as_node(n);
-                // os << ' ';
+                os << ' ';
                 if (node->repeats > 1)
                     os << node->repeats;
                 if (is_terminal(node->maps_to)) {
@@ -192,7 +192,7 @@ auto print_dot_file_grammar(Grammar const & g,
     for (auto const & terminal : g.terminals) {
         auto const ptr = terminal.get();
         os << "\n    \"" << prefix << ptr << "\" [\n";
-        os << "        shape=square\n"
+        os << "        shape=rectangle\n"
               "        label=<\n"
               "          <table border='0' cellborder='0'>\n"
               "            <tr><td port='head'>";
@@ -262,7 +262,7 @@ auto print_dot_file(Grammar const & g,
         os << "Empty grammar";  // TODO
     } else {
         print_dot_file_begin(os);
-        print_dot_file_grammar(g, os, p, false);
+        print_dot_file_grammar(g, os, p, print_input);
         print_dot_file_end(os);
     }
 }
