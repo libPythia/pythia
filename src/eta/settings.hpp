@@ -13,6 +13,7 @@ enum class output_t {
     grammar,
     binary,
     expend,
+    terminals,
 };
 
 struct settings_t final {

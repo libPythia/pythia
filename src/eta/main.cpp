@@ -61,6 +61,17 @@ auto main(int argc, char ** argv) -> int {
                 print_input();
                 print_trace(data.grammar, std::cout, print_terminal);
             } break;
+            case output_t::terminals: {
+                print_input();
+                for (auto const & terminal : data.grammar.terminals) {
+                    auto const occurences_count = terminal->occurences_without_successor.size() +
+                                                  terminal->occurences_with_successor.size();
+                    if (occurences_count > 0) {
+                        print_terminal(terminal.get(), std::cout);
+                        std::cout << std::endl;
+                    }
+                }
+            }
         }
 
         std::cout << std::endl;
