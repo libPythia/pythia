@@ -16,8 +16,9 @@ struct Data {
     static auto make_terminal_data(char const * str, int size = -1) -> void * {
         if (size < 0)
             size = strlen(str);
-        auto res = static_cast<char *>(std::malloc(size = 1));
+        auto res = static_cast<char *>(std::malloc(size + 1));
         memcpy(res, str, size);
+        res[size] = '\0';
         return static_cast<void *>(res);
     }
 
