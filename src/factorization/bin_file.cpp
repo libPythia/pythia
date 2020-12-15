@@ -103,6 +103,7 @@ static auto load_bin_file_impl(Grammar & grammar, std::istream & is) -> void {
         auto const size = read_nb<bin_size_t>(is);
         auto name = static_cast<char *>(malloc(size + 1));
         is.read(name, size);
+        name[size] = '\0';
         auto const terminal = new_terminal(grammar, name);
         symbols[i] = terminal;
     }
