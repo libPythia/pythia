@@ -105,20 +105,23 @@ auto print_reduced_trace(Grammar const & g, std::ostream & os, terminal_printer 
 
 static auto build_non_terminal_names(Grammar const & g)
         -> std::unordered_map<NonTerminal const *, std::string> {
-    auto tmp = std::unordered_map<NonTerminal const *, std::string> {};
-    auto c = 'A';
-    for (auto const & nonterminal : g.nonterminals.in_use_nonterminals()) {
-        if (nonterminal == g.root) {
-            tmp.emplace(g.root, "R");
+    auto res = std::unordered_map<NonTerminal const *, std::string> {};
+    auto tmp = std::string {};
+    auto incr = [&tmp](auto rec, int index) -> void {
+        if (index == -1) {
+            tmp = "A" + tmp;
+        } else if (tmp[index] == 'Z') {
+            tmp[index] = 'A';
+            rec(rec, index - 1);
         } else {
-            if (c == 'R')
-                ++c;
-            auto str = std::string {};
-            str += c++;
-            tmp.emplace(nonterminal, std::move(str));
+            ++tmp[index];
         }
+    };
+    for (auto const & nonterminal : g.nonterminals.in_use_nonterminals()) {
+        incr(incr, tmp.size() - 1);
+        res.emplace(nonterminal, tmp);
     }
-    return tmp;
+    return res;
 }
 
 auto print_grammar(Grammar const & g, std::ostream & os, terminal_printer const & p) -> void {
