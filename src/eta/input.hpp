@@ -9,8 +9,11 @@
 
 inline auto print_error(char const * txt) -> void {
     set_color(std::cerr, color_t::red);
-    std::cerr << "error: " << txt << std::endl;
+    set_style(std::cerr, style_t::bold);
+    std::cerr << "error: ";
     set_color(std::cerr, color_t::standard);
+    std::cerr << txt << std::endl;
+    set_style(std::cerr, style_t::standard);
 }
 
 template <typename... T>
