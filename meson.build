@@ -56,7 +56,7 @@ eta_exe_src = [
 
 eta_exe_deps = [eta_factorizer_dep, utils_dep]
 
-eta_exe = executable('eta', eta_exe_src, dependencies:eta_exe_deps)
+eta_exe = executable('eta', eta_exe_src, dependencies:eta_exe_deps, install:true)
 
 #----------------------------------------------------------------
 
