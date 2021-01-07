@@ -13,10 +13,12 @@ auto main(int argc, char ** argv) -> int {
     if (settings.output_mode == output_t::dot)
         print_dot_file_begin(std::cout);
 
+    auto input = Input(settings);
+
     auto input_count = 0u;
     while (true) {
         auto data = Data {};
-        auto state = get_input(data.grammar, settings);
+        auto state = input.read_input(data.grammar);
 
         if (state == input_state::none)
             break;

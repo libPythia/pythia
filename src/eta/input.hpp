@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <memory>
 
 #include "colors.hpp"
 #include "data.hpp"
@@ -29,5 +30,16 @@ enum class input_state {
     yes,
 };
 
-auto get_input(Grammar & g, settings_t const & settings) -> input_state;
+class Input {
+    struct Impl;
+
+  public:
+    Input(settings_t const & settings);
+    ~Input();
+
+    auto read_input(Grammar & g) -> input_state;
+
+  private:
+    std::unique_ptr<Impl> _impl;
+};
 

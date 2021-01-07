@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 enum class input_t {
     lines,
     text,
@@ -23,6 +25,7 @@ struct settings_t final {
 
     // input
     input_t input_mode;
+    std::string input_file;
 
     // output
     output_t output_mode;

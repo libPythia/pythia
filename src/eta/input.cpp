@@ -4,8 +4,34 @@
 
 #include <eta/factorization/bin_file.hpp>
 #include <eta/factorization/check.hpp>
+#include <fstream>
 
 #include "errors.hpp"
+
+struct Input::Impl {
+    std::fstream input_file;
+    std::istream * is = nullptr;
+    settings_t settings;
+
+    Impl(settings_t const & settings) : settings(settings) {
+        if (settings.input_file != "") {
+            input_file.open(settings.input_file, std::fstream::binary);
+            if (!input_file.is_open()) {
+                input_file.open(settings.input_file);
+                if (!input_file.is_open()) {
+                    print_error("Failed to open file.");
+                    exit(errors_t::FAILED_TO_OPEN_INPUT_FILE);
+                }
+                is = &input_file;
+            }
+        } else {
+            is = &std::cin;
+        }
+    }
+};
+
+Input::Input(settings_t const & settings) : _impl(std::make_unique<Impl>(settings)) {}
+Input::~Input() = default;
 
 static auto is_printable(char c) -> bool { return (c >= 32 && c <= 126); }
 
@@ -22,7 +48,10 @@ static auto integrity_checks(Grammar const & grammar, settings_t const & setting
     }
 }
 
-auto get_input(Grammar & g, settings_t const & settings) -> input_state {
+auto Input::read_input(Grammar & g) -> input_state {
+    auto const & settings = _impl->settings;
+    auto & input_stream = *_impl->is;
+
     print_debug(settings, "Input was reduced");
 
     switch (settings.input_mode) {
@@ -32,7 +61,10 @@ auto get_input(Grammar & g, settings_t const & settings) -> input_state {
             auto input = std::vector<Terminal *> {};
             char c;
             auto input_len = 0;
-            while (read(0, &c, sizeof(c)) == sizeof(c)) {
+            while (true) {
+                input_stream.read(&c, sizeof(c));
+                if (!input_stream)
+                    break;
                 if (c == '\n')
                     break;
                 if (!is_printable(c))
@@ -85,7 +117,11 @@ auto get_input(Grammar & g, settings_t const & settings) -> input_state {
             auto input = std::vector<Terminal *> {};
             char c;
             auto input_len = 0;
-            while (read(0, &c, sizeof(c)) == sizeof(c)) {
+            while (true) {
+                input_stream.read(&c, sizeof(c));
+                if (!input_stream)
+                    break;
+
                 if (settings.input_mode == input_t::text && !is_printable(c))
                     continue;
                 ++input_len;
@@ -124,7 +160,7 @@ auto get_input(Grammar & g, settings_t const & settings) -> input_state {
             return input_state::last;
         } break;
         case input_t::binary: {
-            load_bin_file(g, std::cin);
+            load_bin_file(g, input_stream);
 
             if (settings.check)
                 integrity_checks(g, settings);

@@ -81,6 +81,7 @@ static auto print_help() -> void {
     PRINT_ERROR(INPUT_OUTPUT_MISMATCH, "Too many inputs for output mode.");
     PRINT_ERROR(CHECK_FAILED, "Data structure checks failed. Report this as a bug.");
     PRINT_ERROR(NOT_IMPLEMENTED_FEATURE, "The requested feature is not implemented yet.");
+    PRINT_ERROR(FAILED_TO_OPEN_INPUT_FILE, "The specified input file cannot be open.");
 }
 
 auto count_bools() { return 0; }
@@ -101,6 +102,7 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     auto & non_printable_opt = parser["non-printable"].abbreviation('n');
     auto & line_opt = parser["lines"].abbreviation('l');
     auto & binary_input_opt = parser["binary-input"].abbreviation('b');
+    auto & input_file_opt = parser["input-file"].abbreviation('f').type(po::string);
 
     // output
     auto & print_input_opt = parser["print-input"].abbreviation('i');
@@ -125,6 +127,7 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     auto const non_printable = non_printable_opt.was_set();
     auto const lines = line_opt.was_set();
     auto const binary_input = binary_input_opt.was_set();
+    auto const input_file = input_file_opt.was_set();
 
     // output
     auto const print_input = print_input_opt.was_set();
@@ -159,6 +162,9 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
         settings.input_mode = input_t::lines;
     else
         settings.input_mode = input_t::text;
+
+    if (input_file)
+        settings.input_file = input_file_opt.get().string;
 
     // output settings
 
