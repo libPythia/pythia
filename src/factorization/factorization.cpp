@@ -44,6 +44,14 @@ auto as_terminal(Base const * n) -> Terminal const * {
 }
 
 auto is_symbol(Base const * n) -> bool { return is_terminal(n) || is_nonterminal(n); }
+auto as_symbol(Base * n) -> Symbol * {
+    assert(is_symbol(n));
+    return reinterpret_cast<Symbol *>(n);
+}
+auto as_symbol(Base const * n) -> Symbol const * {
+    assert(is_symbol(n));
+    return reinterpret_cast<Symbol const *>(n);
+}
 
 static_assert(sizeof(Node) == 32);
 auto is_node(Base const * n) -> bool { return !is_symbol(n); }

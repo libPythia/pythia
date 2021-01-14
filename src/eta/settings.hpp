@@ -22,6 +22,8 @@ struct settings_t final {
     // general
     bool debug;
     bool check;
+    bool replay;
+    std::string compare;
 
     // input
     input_t input_mode;

@@ -62,6 +62,11 @@ static auto print_help() -> void {
     print_option('h', "help", "Show this help.");
     print_option('D', "debug", "Print debug informations.");
     print_option('c', "check", "Enable integrity and validity checks.");
+    print_option(0,
+                 "replay",
+                 "Replay the trace and validate each event is correctly predicted using the "
+                 "reduced trace.");
+    print_option(0, "compare", "Give a string to compare to each input");
     print_subsection("Input options");
     print_option('n', "non-printable", "Don't ignore non-printable characters.");
     print_option('l', "lines", "Take each line of input as a different input to reduce");
@@ -97,6 +102,8 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     auto & debug_opt = parser["debug"].abbreviation('D');
     auto & help_opt = parser["help"].abbreviation('h');
     auto & check_opt = parser["check"].abbreviation('c');
+    auto & replay_opt = parser["replay"];
+    auto & compare_opt = parser["compare"].type(po::string);
 
     // input
     auto & non_printable_opt = parser["non-printable"].abbreviation('n');
@@ -122,6 +129,8 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     auto const help = help_opt.was_set();
     auto const check = check_opt.was_set();
     auto const no_color = no_color_opt.was_set();
+    auto const replay = replay_opt.was_set();
+    auto const compare = compare_opt.was_set();
 
     // input
     auto const non_printable = non_printable_opt.was_set();
@@ -140,6 +149,12 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     // general settings
     settings.debug = debug;
     settings.check = check;
+    settings.replay = replay;
+    if (compare)
+        settings.compare = compare_opt.get().string;
+    else
+        settings.compare = "";
+
     if (no_color)
         rang::setControlMode(rang::control::Off);
     else

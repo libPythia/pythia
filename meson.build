@@ -49,8 +49,10 @@ eta_factorizer_exaustive_test = executable('exaustive_test',
 
 eta_exe_src = [
   'src/eta/colors.cpp',
+  'src/eta/compare.cpp',
   'src/eta/input.cpp',
   'src/eta/main.cpp',
+  'src/eta/replay.cpp',
   'src/eta/settings.cpp',
 ]
 

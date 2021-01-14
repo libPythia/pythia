@@ -59,6 +59,8 @@ auto is_terminal(Base const * n) -> bool;
 auto as_terminal(Base * n) -> Terminal *;
 auto as_terminal(Base const * n) -> Terminal const *;
 auto is_symbol(Base const * n) -> bool;
+auto as_symbol(Base * n) -> Symbol *;
+auto as_symbol(Base const * n) -> Symbol const *;
 auto is_node(Base const * n) -> bool;
 auto as_node(Base * n) -> Node *;
 auto as_node(Base const * n) -> Node const *;
