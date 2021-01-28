@@ -78,13 +78,6 @@ static auto check_possible_paths(PossiblePaths const & pp, Symbol const * s) -> 
     }
 
     for (auto i = 0u; i < count; ++i) {
-        for (auto j = i + 1; j < count; ++j) {
-            if (pp[i]->node == pp[j]->node) {
-                std::cerr << "Unmerged possible paths." << std::endl;
-                return false;
-            }
-        }
-
         if (!check_path(pp[i], s))
             return false;
     }
@@ -253,7 +246,7 @@ auto compare(Grammar const & g, std::string const & str, terminal_printer const 
     }();
 
     auto paths = PossiblePaths {};
-    for (auto const it : trace) {
+    for (auto const & it : trace) {
         if (it.first == nullptr) {
             set_color(std::cout, color_t::yellow);
             std::cout << it.second;
