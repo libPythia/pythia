@@ -109,15 +109,13 @@ class NonTerminalFactory final {
 // ----------------------------------------------------------
 
 struct Grammar {
-    NonTerminal * root = nullptr;
     std::vector<std::unique_ptr<Terminal>> terminals;
     NodeFactory nodes;
     NonTerminalFactory nonterminals;
 };
 
 auto new_terminal(Grammar & g, void * payload) -> Terminal *;
-auto insertSymbol(Grammar & g, Terminal * n) -> void;
-auto linearise_grammar(Grammar const & g) -> std::vector<Terminal const *>;
+auto insertSymbol(Grammar & g, NonTerminal * nt, Terminal * t) -> NonTerminal *;
 
 // ----------------------------------------------------------
 

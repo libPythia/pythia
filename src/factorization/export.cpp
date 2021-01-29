@@ -7,12 +7,12 @@
 #include <tuple>
 #include <unordered_map>
 
-auto linearise_grammar(Grammar const & g) -> std::vector<Terminal const *> {
+auto linearise_grammar(NonTerminal const * root) -> std::vector<Terminal const *> {
     auto res = std::vector<Terminal const *> {};
-    if (g.root == nullptr)
+    if (root == nullptr)
         return res;
 
-    auto buf = std::vector<std::pair<Symbol const *, int>> { { g.root, 1 } };
+    auto buf = std::vector<std::pair<Symbol const *, int>> { { root, 1 } };
 
     while (buf.size() > 0u) {
         auto const [s, l] = buf.back();
@@ -38,11 +38,11 @@ auto linearise_grammar(Grammar const & g) -> std::vector<Terminal const *> {
     return res;
 }
 
-auto print_trace(Grammar const & g, std::ostream & os, terminal_printer const & p) -> void {
-    if (g.root == nullptr)
+auto print_trace(NonTerminal const * root, std::ostream & os, terminal_printer const & p) -> void {
+    if (root == nullptr)
         return;
 
-    auto buf = std::vector<std::pair<Symbol const *, int>> { { g.root, 1 } };
+    auto buf = std::vector<std::pair<Symbol const *, int>> { { root, 1 } };
 
     while (buf.size() > 0u) {
         auto const [s, l] = buf.back();
@@ -66,11 +66,12 @@ auto print_trace(Grammar const & g, std::ostream & os, terminal_printer const & 
     }
 }
 
-auto print_reduced_trace(Grammar const & g, std::ostream & os, terminal_printer const & p) -> void {
-    if (g.root == nullptr)
+auto print_reduced_trace(NonTerminal const * root, std::ostream & os, terminal_printer const & p)
+        -> void {
+    if (root == nullptr)
         return;
 
-    auto buf = std::vector<std::pair<Symbol const *, int>> { { g.root, 1 } };
+    auto buf = std::vector<std::pair<Symbol const *, int>> { { root, 1 } };
 
     while (buf.size() > 0u) {
         auto const [s, l] = buf.back();
@@ -84,7 +85,7 @@ auto print_reduced_trace(Grammar const & g, std::ostream & os, terminal_printer 
         if (l > 1)
             os << l;
 
-        if (is_nonterminal(s) && s != g.root) {
+        if (is_nonterminal(s) && s != root) {
             os << '(';
             buf.push_back({ nullptr, 0 });
         }
@@ -124,12 +125,15 @@ static auto build_non_terminal_names(Grammar const & g)
     return res;
 }
 
-auto print_grammar(Grammar const & g, std::ostream & os, terminal_printer const & p) -> void {
-    if (g.root == nullptr) {
+auto print_grammar(Grammar const & g,
+                   NonTerminal const * root,
+                   std::ostream & os,
+                   terminal_printer const & p) -> void {
+    if (root == nullptr) {
         os << "Empty grammar";
     } else {
         auto const nonterminals = build_non_terminal_names(g);
-        os << "Grammar root is <" << nonterminals.find(g.root)->second << '>';
+        os << "Grammar root is <" << nonterminals.find(root)->second << '>';
 
         for (auto const & nonterminal : g.nonterminals.in_use_nonterminals()) {
             os << "\n<" << nonterminals.find(nonterminal)->second << "> ::= ";
@@ -174,6 +178,7 @@ auto print_dot_file_begin(std::ostream & os) -> void {
 }
 
 auto print_dot_file_grammar(Grammar const & g,
+                            NonTerminal const * non_terminal,
                             std::ostream & os,
                             terminal_printer const & p,
                             bool print_input) -> void {
@@ -186,7 +191,7 @@ auto print_dot_file_grammar(Grammar const & g,
 
     if (print_input) {
         os << "    label =\"";
-        print_trace(g, os, p);
+        print_trace(non_terminal, os, p);
         os << "\";\n";
     }
 
@@ -223,16 +228,6 @@ auto print_dot_file_grammar(Grammar const & g,
         os << "        shape=rectangle\n"
               "        label=<\n"
               "          <table border='0' cellborder='0'>\n";
-        // if (non_terminal == g.root) {
-        //     auto node_count = 0;
-        //     for_each_node(non_terminal, [&node_count](auto) { ++node_count; });
-        //     os << "            <tr>\n"
-        //           "              <td colspan=\""
-        //        << node_count + 1 << "\">";
-        //     print_trace(g, os, p);
-        //     os << "</td>\n"
-        //           "            </tr>\n";
-        // }
         os << "            <tr>\n"
               "              <td port='head'>"
            << name << " :</td>\n";
@@ -258,15 +253,12 @@ auto print_dot_file_grammar(Grammar const & g,
 auto print_dot_file_end(std::ostream & os) -> void { os << "}"; }
 
 auto print_dot_file(Grammar const & g,
+                    NonTerminal const * non_terminal,
                     std::ostream & os,
                     terminal_printer const & p,
                     bool print_input) -> void {
-    if (g.root == nullptr) {
-        os << "Empty grammar";  // TODO
-    } else {
-        print_dot_file_begin(os);
-        print_dot_file_grammar(g, os, p, print_input);
-        print_dot_file_end(os);
-    }
+    print_dot_file_begin(os);
+    print_dot_file_grammar(g, non_terminal, os, p, print_input);
+    print_dot_file_end(os);
 }
 

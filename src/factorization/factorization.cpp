@@ -148,6 +148,7 @@ auto new_terminal(Grammar & g, void * payload) -> Terminal * {
 static auto new_nonterminal(Grammar & g) -> NonTerminal * {
     return g.nonterminals.new_nonterminal();
 }
+
 static auto remove_nonterminal(Grammar & g, NonTerminal * n) -> void {
     g.nonterminals.release_nonterminal(n);
 }
@@ -392,19 +393,20 @@ static auto appendSymbol(Grammar & g, NonTerminal * r, Symbol * n) -> void {
     }
 }
 
-auto insertSymbol(Grammar & g, Terminal * n) -> void {
-    assert(is_terminal(n));
-    if (g.root == nullptr) {
+auto insertSymbol(Grammar & g, NonTerminal * nt, Terminal * t) -> NonTerminal * {
+    assert(is_terminal(t));
+    if (nt == nullptr) {
         trace("\nI");
-        g.root = new_nonterminal(g);
-        g.root->first = g.root->last = new_node(g);
-        g.root->first->repeats = 1;
-        g.root->first->next = g.root->first->previous = g.root;
-        g.root->first->maps_to = n;
-        add_occurence(n, g.root->first, nullptr);
+        nt = new_nonterminal(g);
+        nt->first = nt->last = new_node(g);
+        nt->first->repeats = 1;
+        nt->first->next = nt->first->previous = nt;
+        nt->first->maps_to = t;
+        add_occurence(t, nt->first, nullptr);
     } else {
         trace("I");
-        appendSymbol(g, g.root, n);
+        appendSymbol(g, nt, t);
     }
+    return nt;
 }
 

@@ -56,6 +56,7 @@ auto main(int argc, char ** argv) -> int {
     std::istringstream this_line(line);
 
     auto g = Grammar {};
+    auto root = static_cast<NonTerminal *>(nullptr);
     auto leafs = std::unordered_map<int, Terminal *> {};
     auto trace = std::vector<Terminal *> {};
 
@@ -76,7 +77,7 @@ auto main(int argc, char ** argv) -> int {
         auto const t0 = std::chrono::high_resolution_clock::now();
 
         for (auto const n : trace)
-            insertSymbol(g, n);
+            root = insertSymbol(g, root, n);
 
         auto const t1 = std::chrono::high_resolution_clock::now();
         auto const reduction_duration = std::chrono::duration<double>(t1 - t0);

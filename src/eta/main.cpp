@@ -20,7 +20,7 @@ auto main(int argc, char ** argv) -> int {
     auto input_count = 0u;
     while (true) {
         auto data = Data {};
-        auto state = input.read_input(data.grammar);
+        auto state = input.read_input(data.grammar, data.root);
 
         if (state == input_state::none)
             break;
@@ -37,7 +37,7 @@ auto main(int argc, char ** argv) -> int {
         auto print_input = [&]() {
             if (settings.print_input) {
                 set_color(std::cout, color_t::green);
-                print_trace(data.grammar, std::cout, print_terminal);
+                print_trace(data.root, std::cout, print_terminal);
                 set_color(std::cout, color_t::standard);
                 std::cout << ": ";
             }
@@ -46,24 +46,25 @@ auto main(int argc, char ** argv) -> int {
         switch (settings.output_mode) {
             case output_t::reduced: {
                 print_input();
-                print_reduced_trace(data.grammar, std::cout, print_terminal);
+                print_reduced_trace(data.root, std::cout, print_terminal);
             } break;
             case output_t::dot: {
                 print_dot_file_grammar(data.grammar,
+                                       data.root,
                                        std::cout,
                                        print_terminal,
                                        settings.print_input);
             } break;
             case output_t::grammar: {
                 print_input();
-                print_grammar(data.grammar, std::cout, print_terminal);
+                print_grammar(data.grammar, data.root, std::cout, print_terminal);
             } break;
             case output_t::binary: {
                 print_bin_file(data.grammar, std::cout, print_terminal);
             } break;
             case output_t::expend: {
                 print_input();
-                print_trace(data.grammar, std::cout, print_terminal);
+                print_trace(data.root, std::cout, print_terminal);
             } break;
             case output_t::terminals: {
                 print_input();

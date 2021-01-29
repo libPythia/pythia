@@ -116,9 +116,9 @@ auto main(int argc, char ** argv) -> int {
     while (true) {
         try {
             auto g = Grammar {};
-            build_grammar_from_string(g, trace);
+            auto const root = build_grammar_from_string(g, trace);
 
-            auto const output = get_string_from_grammar(g);
+            auto const output = get_string_from_grammar(root);
 
             if (!check_graph_integrity(g)) {
                 reportError(trace, output, "Graph is corrupted");

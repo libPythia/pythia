@@ -81,6 +81,10 @@ template <> struct hash<std::pair<Symbol const *, Symbol const *>> {
 
 }  // namespace std
 
+static auto is_root(NonTerminal const * nt) -> bool {
+    return nt->occurences_with_successor.size() + nt->occurences_without_successor.size() == 0;
+}
+
 auto check_grammar_constraints(Grammar const & g) -> bool {
     auto digrams = std::unordered_set<std::pair<Symbol const *, Symbol const *>> {};
 
@@ -88,7 +92,7 @@ auto check_grammar_constraints(Grammar const & g) -> bool {
 
     for (auto const nonterminal : g.nonterminals.in_use_nonterminals()) {
         // rules utility
-        if (g.root != nonterminal) {
+        if (!is_root(nonterminal)) {
             if (nonterminal->first == nonterminal->last) {
                 std::cerr << "\nA rule wich is not root contains only one symbol.";
                 ok = false;

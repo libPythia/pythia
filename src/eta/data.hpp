@@ -5,6 +5,7 @@
 
 struct Data {
     Grammar grammar;
+    NonTerminal * root = nullptr;
 
     static auto make_terminal_data(char c) -> void * {
         auto res = static_cast<char *>(std::malloc(2));

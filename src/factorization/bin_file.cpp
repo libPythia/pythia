@@ -88,8 +88,6 @@ static auto print_bin_file_impl(Grammar const & g,
         }
         write_nb<bin_size_t>(os, end_sentinel<bin_size_t>);
     }
-
-    write_nb<bin_size_t>(os, indices.at(g.root));
 }
 
 template <typename bin_size_t>
@@ -148,8 +146,6 @@ static auto load_bin_file_impl(Grammar & grammar, std::istream & is) -> void {
             previous_node = node;
         }
     }
-
-    grammar.root = as_nonterminal(symbols.at(read_nb<bin_size_t>(is)));
 }
 
 auto print_bin_file(Grammar const & g, std::ostream & os, terminal_printer const & printer)

@@ -137,14 +137,14 @@ static auto descend_path(Path & p) -> void {
     }
 }
 
-static auto initial_path(Grammar const & g) -> Path {
-    assert(g.root != nullptr);
-    auto res = make_path(g.root->first);
+static auto initial_path(NonTerminal const * root) -> Path {
+    assert(root != nullptr);
+    auto res = make_path(root->first);
     descend_path(res);
     assert(check_path(res, res->node->maps_to));
     assert(is_terminal(res->node->maps_to));
-    [[maybe_unused]] auto test = [&g](auto rec, auto const & n) -> bool {
-        return (n->node == g.root->first) || (n->parent != nullptr && rec(rec, n->parent));
+    [[maybe_unused]] auto test = [root](auto rec, auto const & n) -> bool {
+        return (n->node == root->first) || (n->parent != nullptr && rec(rec, n->parent));
     };
     assert(test(test, res));
     return res;
@@ -199,13 +199,19 @@ static auto next(Grammar const & g, PossiblePaths & possible_paths, Terminal con
 
     // Special case for initialization on first event
     if (possible_paths.empty()) {
-        auto p = initial_path(g);
-        if (get_terminal(p) == t) {
-            res.emplace_back(std::move(p));
-            result = result_t::success;
-        } else {
-            possibles_paths_from_terminal(res, t);
-            result = result_t::failed;
+        for (auto const & non_terminal : g.nonterminals.in_use_nonterminals()) {
+            auto const occurences_count = non_terminal->occurences_with_successor.size() +
+                                          non_terminal->occurences_without_successor.size();
+            if (occurences_count == 0) {
+                auto p = initial_path(non_terminal);
+                if (get_terminal(p) == t) {
+                    res.emplace_back(std::move(p));
+                    result = result_t::success;
+                } else {
+                    possibles_paths_from_terminal(res, t);
+                    result = result_t::failed;
+                }
+            }
         }
     } else
         for (auto & pp : possible_paths)

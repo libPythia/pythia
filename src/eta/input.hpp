@@ -40,7 +40,7 @@ class Input {
     Input(settings_t const & settings);
     ~Input();
 
-    auto read_input(Grammar & g) -> input_state;
+    auto read_input(Grammar & g, NonTerminal *&) -> input_state;
 
   private:
     std::unique_ptr<Impl> _impl;

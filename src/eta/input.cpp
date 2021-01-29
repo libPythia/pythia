@@ -4,6 +4,7 @@
 
 #include <eta/factorization/bin_file.hpp>
 #include <eta/factorization/check.hpp>
+#include <eta/factorization/export.hpp>
 #include <fstream>
 
 #include "errors.hpp"
@@ -48,7 +49,7 @@ static auto integrity_checks(Grammar const & grammar, settings_t const & setting
     }
 }
 
-auto Input::read_input(Grammar & g) -> input_state {
+auto Input::read_input(Grammar & g, NonTerminal *& root) -> input_state {
     auto const & settings = _impl->settings;
     auto & input_stream = *_impl->is;
 
@@ -78,7 +79,7 @@ auto Input::read_input(Grammar & g) -> input_state {
                 }();
                 if (settings.check)
                     input.push_back(terminal);
-                insertSymbol(g, terminal);
+                root = insertSymbol(g, root, terminal);
             }
             if (input_len == 0)
                 return input_state::none;
@@ -87,7 +88,7 @@ auto Input::read_input(Grammar & g) -> input_state {
             if (settings.check) {
                 print_debug(settings,
                             "Perform conformity check between input and reduced grammar.");
-                auto const output = linearise_grammar(g);
+                auto const output = linearise_grammar(root);
                 if (![&]() {
                         auto it1 = input.begin();
                         auto it2 = output.begin();
@@ -133,14 +134,14 @@ auto Input::read_input(Grammar & g) -> input_state {
                 }();
                 if (settings.check)
                     input.push_back(terminal);
-                insertSymbol(g, terminal);
+                root = insertSymbol(g, root, terminal);
             }
 
             print_debug(settings, "Input length = ", input_len, '.');
             if (settings.check) {
                 print_debug(settings,
                             "Perform conformity check between input and reduced grammar.");
-                auto const output = linearise_grammar(g);
+                auto const output = linearise_grammar(root);
                 if (![&]() {
                         auto it1 = input.begin();
                         auto it2 = output.begin();
