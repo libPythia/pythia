@@ -7,7 +7,6 @@
 #include "input.hpp"
 #include "settings.hpp"
 
-auto replay(Grammar const & g, terminal_printer const & printer) -> void;
 auto compare(Grammar const & g, std::string const & str, terminal_printer const & printer) -> void;
 
 auto main(int argc, char ** argv) -> int {
@@ -81,8 +80,6 @@ auto main(int argc, char ** argv) -> int {
 
         if (settings.compare != "") {
             compare(data.grammar, settings.compare, print_terminal);
-        } else if (settings.replay) {
-            replay(data.grammar, print_terminal);
         }
 
         std::cout << std::endl;
