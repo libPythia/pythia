@@ -117,7 +117,7 @@ static auto load_bin_file_impl(Grammar & grammar, std::istream & is) -> void {
             auto maps_to = read_nb<bin_size_t>(is);
             if (maps_to == end_sentinel<bin_size_t>) {
                 assert(previous_node != nullptr);
-                previous_node->maps_to->occurences_without_successor.insert(previous_node);
+                previous_node->maps_to->occurrences_without_successor.insert(previous_node);
                 previous_node->next = nonterminal;
                 nonterminal->last = previous_node;
                 break;
@@ -137,8 +137,8 @@ static auto load_bin_file_impl(Grammar & grammar, std::istream & is) -> void {
                 nonterminal->first = node;
                 node->previous = nonterminal;
             } else {
-                previous_node->maps_to->occurences_with_successor.emplace(node->maps_to,
-                                                                          previous_node);
+                previous_node->maps_to->occurrences_with_successor.emplace(node->maps_to,
+                                                                           previous_node);
                 previous_node->next = node;
                 node->previous = previous_node;
             }

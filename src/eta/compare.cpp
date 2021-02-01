@@ -159,9 +159,9 @@ enum class result_t {
 };
 
 static auto possibles_paths_from_terminal(PossiblePaths & pp, Terminal const * t) -> void {
-    for (auto const p : t->occurences_with_successor)
+    for (auto const p : t->occurrences_with_successor)
         pp.emplace_back(make_path(p.second));
-    for (auto const p : t->occurences_without_successor)
+    for (auto const p : t->occurrences_without_successor)
         pp.emplace_back(make_path(p));
 }
 
@@ -179,9 +179,9 @@ static auto next_path(PossiblePaths & pp, Path p, Terminal const * t, result_t &
         return;
     } else {
         auto const s = get_symbol(p->node);
-        for (auto const n : s->occurences_without_successor)
+        for (auto const n : s->occurrences_without_successor)
             next_path(pp, make_path(n), t, r);
-        for (auto const n : s->occurences_with_successor)
+        for (auto const n : s->occurrences_with_successor)
             next_path(pp, make_path(n.second), t, r);
         return;
     }
@@ -200,9 +200,9 @@ static auto next(Grammar const & g, PossiblePaths & possible_paths, Terminal con
     // Special case for initialization on first event
     if (possible_paths.empty()) {
         for (auto const & non_terminal : g.nonterminals.in_use_nonterminals()) {
-            auto const occurences_count = non_terminal->occurences_with_successor.size() +
-                                          non_terminal->occurences_without_successor.size();
-            if (occurences_count == 0) {
+            auto const occurrences_count = non_terminal->occurrences_with_successor.size() +
+                                           non_terminal->occurrences_without_successor.size();
+            if (occurrences_count == 0) {
                 auto p = initial_path(non_terminal);
                 if (get_terminal(p) == t) {
                     res.emplace_back(std::move(p));

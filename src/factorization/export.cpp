@@ -129,7 +129,7 @@ auto print_grammar(Grammar const & g, std::ostream & os, terminal_printer const 
     auto const nonterminals = build_non_terminal_names(g);
 
     for (auto const & nonterminal : g.nonterminals.in_use_nonterminals()) {
-        if (occurences_count(nonterminal) == 0)
+        if (occurrences_count(nonterminal) == 0)
             os << "\n+ <";
         else
             os << "\n  <";

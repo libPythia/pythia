@@ -22,14 +22,14 @@ struct Base {
 };
 
 struct Symbol : public Base {
-    std::unordered_map<Symbol *, Node *> occurences_with_successor;
-    std::unordered_set<Node *> occurences_without_successor;
+    std::unordered_map<Symbol *, Node *> occurrences_with_successor;
+    std::unordered_set<Node *> occurrences_without_successor;
 
   protected:
     Symbol(std::size_t repeat_value);
 };
 
-auto occurences_count(Symbol const * r) -> std::size_t;
+auto occurrences_count(Symbol const * r) -> std::size_t;
 
 struct NonTerminal final : public Symbol {
     Node * first = nullptr;

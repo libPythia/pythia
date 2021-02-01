@@ -156,36 +156,36 @@ static auto remove_nonterminal(Grammar & g, NonTerminal * n) -> void {
 // ----------------------------------------------------------
 
 static auto get_digram(Symbol * r, Symbol * n) -> Node * {
-    auto const it = r->occurences_with_successor.find(n);
-    if (it == r->occurences_with_successor.end())
+    auto const it = r->occurrences_with_successor.find(n);
+    if (it == r->occurrences_with_successor.end())
         return nullptr;
     return it->second;
 }
 
-auto occurences_count(Symbol const * r) -> std::size_t {
-    return r->occurences_with_successor.size() + r->occurences_without_successor.size();
+auto occurrences_count(Symbol const * r) -> std::size_t {
+    return r->occurrences_with_successor.size() + r->occurrences_without_successor.size();
 }
 
-static auto add_occurence(Symbol * rule, Node * parent, Symbol * next) -> void {
+static auto add_occurrence(Symbol * rule, Node * parent, Symbol * next) -> void {
     if (next == nullptr) {
-        rule->occurences_without_successor.emplace(parent);
+        rule->occurrences_without_successor.emplace(parent);
     } else {
-        rule->occurences_with_successor.emplace(next, parent);
+        rule->occurrences_with_successor.emplace(next, parent);
     }
 }
 
-static auto remove_occurence(Symbol * rule, Node * parent, Symbol * next) -> void {
+static auto remove_occurrence(Symbol * rule, Node * parent, Symbol * next) -> void {
     if (next == nullptr) {
-        rule->occurences_without_successor.extract(parent);
+        rule->occurrences_without_successor.extract(parent);
     } else {
-        rule->occurences_with_successor.extract(next);
+        rule->occurrences_with_successor.extract(next);
     }
 }
 
-static auto replace_occurence(Symbol * rule, Node * parent, Symbol * old_next, Symbol * new_next)
+static auto replace_occurrence(Symbol * rule, Node * parent, Symbol * old_next, Symbol * new_next)
         -> void {
-    remove_occurence(rule, parent, old_next);
-    add_occurence(rule, parent, new_next);
+    remove_occurrence(rule, parent, old_next);
+    add_occurrence(rule, parent, new_next);
 }
 
 static auto appendSymbol(Grammar & g, NonTerminal * r, Symbol * n) -> void {
@@ -205,7 +205,7 @@ static auto appendSymbol(Grammar & g, NonTerminal * r, Symbol * n) -> void {
             trace("j");
             auto const p_m = new_node(g);
             p_m->maps_to = p;
-            add_occurence(p, p_m, p);  // would be removed immediatly after
+            add_occurrence(p, p_m, p);  // would be removed immediatly after
             p_m->repeats = p_j->repeats - p_i->repeats;
             p_j->repeats = p_i->repeats;
             if (is_first(p_j)) {
@@ -225,7 +225,7 @@ static auto appendSymbol(Grammar & g, NonTerminal * r, Symbol * n) -> void {
             trace("i");
             auto const p_m = new_node(g);
             p_m->maps_to = p;
-            add_occurence(p, p_m, p);
+            add_occurrence(p, p_m, p);
             p_m->repeats = p_i->repeats - p_j->repeats;
             p_i->repeats = p_j->repeats;
             auto const prev = previous_node(p_i);
@@ -241,7 +241,7 @@ static auto appendSymbol(Grammar & g, NonTerminal * r, Symbol * n) -> void {
             // n_m is set on the left for optimization, swap n_m and n_k adresses at end of block
             auto const n_m = new_node(g);
             n_m->maps_to = n;
-            add_occurence(n, n_m, n);  // would be removed immediatly after
+            add_occurrence(n, n_m, n);  // would be removed immediatly after
             n_k->repeats = n_k->repeats - 1;
             n_m->repeats = 1;
             p_j->next = n_k->previous = n_m;
@@ -250,15 +250,16 @@ static auto appendSymbol(Grammar & g, NonTerminal * r, Symbol * n) -> void {
             n_k = n_m;
         }
 
-        if (!is_terminal(p) && p_i->repeats == 1 && p_j->repeats == 1 && occurences_count(p) == 2) {
+        if (!is_terminal(p) && p_i->repeats == 1 && p_j->repeats == 1 &&
+            occurrences_count(p) == 2) {
             auto const r_p = as_nonterminal(p);
             // Extend a nonterminal symbol
             if (is_first(p_j) && is_last(n_k)) {
                 trace("f");
                 // remove p_i
                 auto const prev_p_i = previous_node(p_i);
-                replace_occurence(prev_p_i->maps_to, prev_p_i, p, nullptr);
-                remove_occurence(p, p_i, nullptr);
+                replace_occurrence(prev_p_i->maps_to, prev_p_i, p, nullptr);
+                remove_occurrence(p, p_i, nullptr);
                 prev_p_i->next = r;
                 r->last = prev_p_i;
                 remove_node(g, p_i);
@@ -266,8 +267,8 @@ static auto appendSymbol(Grammar & g, NonTerminal * r, Symbol * n) -> void {
                 auto const r_pn = as_nonterminal(p_j->previous);
 
                 // remove r_pn content
-                remove_occurence(p, p_j, n);
-                remove_occurence(n, n_k, nullptr);
+                remove_occurrence(p, p_j, n);
+                remove_occurrence(n, n_k, nullptr);
                 remove_node(g, p_j);
                 remove_node(g, n_k);
 
@@ -285,8 +286,8 @@ static auto appendSymbol(Grammar & g, NonTerminal * r, Symbol * n) -> void {
                 trace("e");
                 // remove p_i
                 auto const prev_p_i = previous_node(p_i);
-                replace_occurence(prev_p_i->maps_to, prev_p_i, p, nullptr);
-                remove_occurence(p, p_i, nullptr);
+                replace_occurrence(prev_p_i->maps_to, prev_p_i, p, nullptr);
+                remove_occurrence(p, p_i, nullptr);
                 prev_p_i->next = r;
                 r->last = prev_p_i;
                 remove_node(g, p_i);
@@ -294,16 +295,16 @@ static auto appendSymbol(Grammar & g, NonTerminal * r, Symbol * n) -> void {
                 if (is_last(n_k)) {
                     trace("1");
                     auto const r2 = as_nonterminal(n_k->next);
-                    replace_occurence(p, p_j, n, nullptr);
-                    remove_occurence(n, n_k, nullptr);
+                    replace_occurrence(p, p_j, n, nullptr);
+                    remove_occurrence(n, n_k, nullptr);
                     p_j->next = r2;
                     r2->last = p_j;
                     remove_node(g, n_k);
                 } else {
                     trace("2");
                     auto const next_n_k = next_node(n_k);
-                    replace_occurence(p, p_j, n, next_n_k->maps_to);
-                    remove_occurence(n, n_k, next_n_k->maps_to);
+                    replace_occurrence(p, p_j, n, next_n_k->maps_to);
+                    remove_occurrence(n, n_k, next_n_k->maps_to);
                     p_j->next = next_n_k;
                     next_n_k->previous = p_j;
                     remove_node(g, n_k);
@@ -316,8 +317,8 @@ static auto appendSymbol(Grammar & g, NonTerminal * r, Symbol * n) -> void {
             trace("r");
             // remove p_i
             auto const prev_p_i = previous_node(p_i);
-            replace_occurence(prev_p_i->maps_to, prev_p_i, p, nullptr);
-            remove_occurence(p, p_i, nullptr);
+            replace_occurrence(prev_p_i->maps_to, prev_p_i, p, nullptr);
+            remove_occurrence(p, p_i, nullptr);
             prev_p_i->next = r;
             r->last = prev_p_i;
             remove_node(g, p_i);
@@ -331,8 +332,8 @@ static auto appendSymbol(Grammar & g, NonTerminal * r, Symbol * n) -> void {
             trace("c");
             // remove p_i
             auto const prev_p_i = previous_node(p_i);
-            replace_occurence(prev_p_i->maps_to, prev_p_i, p, nullptr);
-            remove_occurence(p, p_i, nullptr);
+            replace_occurrence(prev_p_i->maps_to, prev_p_i, p, nullptr);
+            remove_occurrence(p, p_i, nullptr);
             prev_p_i->next = r;
             r->last = prev_p_i;
 
@@ -351,7 +352,7 @@ static auto appendSymbol(Grammar & g, NonTerminal * r, Symbol * n) -> void {
             } else {
                 trace("2");
                 auto const prev_p_j = previous_node(p_j);
-                replace_occurence(prev_p_j->maps_to, prev_p_j, p, s);
+                replace_occurrence(prev_p_j->maps_to, prev_p_j, p, s);
                 prev_p_j->next = p_i;
                 p_i->previous = prev_p_j;
             }
@@ -362,14 +363,14 @@ static auto appendSymbol(Grammar & g, NonTerminal * r, Symbol * n) -> void {
             if (is_last(n_k)) {
                 trace("3");
                 auto const r2 = as_nonterminal(n_k->next);
-                add_occurence(s, p_i, nullptr);
+                add_occurrence(s, p_i, nullptr);
                 r2->last = p_i;
                 p_i->next = r2;
             } else {
                 trace("4");
                 auto const next_n_k = next_node(n_k);
-                replace_occurence(n, n_k, next_n_k->maps_to, nullptr);
-                add_occurence(s, p_i, next_n_k->maps_to);
+                replace_occurrence(n, n_k, next_n_k->maps_to, nullptr);
+                add_occurrence(s, p_i, next_n_k->maps_to);
                 next_n_k->previous = p_i;
                 p_i->next = next_n_k;
             }
@@ -382,14 +383,14 @@ static auto appendSymbol(Grammar & g, NonTerminal * r, Symbol * n) -> void {
     } else {
         trace("a");
         // add with no simplification
-        remove_occurence(p_i->maps_to, p_i, nullptr);
+        remove_occurrence(p_i->maps_to, p_i, nullptr);
         p_i->next = r->last = new_node(g);
         p_i->next->repeats = 1;
         r->last->next = r;
         r->last->previous = p_i;
         r->last->maps_to = n;
-        add_occurence(p_i->maps_to, p_i, n);
-        add_occurence(n, r->last, nullptr);
+        add_occurrence(p_i->maps_to, p_i, n);
+        add_occurrence(n, r->last, nullptr);
     }
 }
 
@@ -402,7 +403,7 @@ auto insertSymbol(Grammar & g, NonTerminal * nt, Terminal * t) -> NonTerminal * 
         nt->first->repeats = 1;
         nt->first->next = nt->first->previous = nt;
         nt->first->maps_to = t;
-        add_occurence(t, nt->first, nullptr);
+        add_occurrence(t, nt->first, nullptr);
     } else {
         trace("I");
         appendSymbol(g, nt, t);

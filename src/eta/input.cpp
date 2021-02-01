@@ -48,7 +48,7 @@ static auto read_input(settings_t const & settings, std::istream & is) -> Input 
         case input_t::binary: {
             load_bin_file(res.grammar, is);
             for (auto const & nonterminal : res.grammar.nonterminals.in_use_nonterminals()) {
-                if (occurences_count(nonterminal) == 0)
+                if (occurrences_count(nonterminal) == 0)
                     res.threads.emplace_back(const_cast<NonTerminal *>(nonterminal));
             }
             break;

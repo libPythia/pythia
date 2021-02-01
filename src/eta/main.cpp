@@ -52,9 +52,9 @@ auto main(int argc, char ** argv) -> int {
             break;
         case output_t::terminals:
             for (auto const & terminal : input.grammar.terminals) {
-                auto const occurences_count = terminal->occurences_without_successor.size() +
-                                              terminal->occurences_with_successor.size();
-                if (occurences_count > 0) {
+                auto const occurrences_count = terminal->occurrences_without_successor.size() +
+                                               terminal->occurrences_with_successor.size();
+                if (occurrences_count > 0) {
                     print_terminal(terminal.get(), std::cout);
                     std::cout << std::endl;
                 }
