@@ -125,30 +125,26 @@ static auto build_non_terminal_names(Grammar const & g)
     return res;
 }
 
-auto print_grammar(Grammar const & g,
-                   NonTerminal const * root,
-                   std::ostream & os,
-                   terminal_printer const & p) -> void {
-    if (root == nullptr) {
-        os << "Empty grammar";
-    } else {
-        auto const nonterminals = build_non_terminal_names(g);
-        os << "Grammar root is <" << nonterminals.find(root)->second << '>';
+auto print_grammar(Grammar const & g, std::ostream & os, terminal_printer const & p) -> void {
+    auto const nonterminals = build_non_terminal_names(g);
 
-        for (auto const & nonterminal : g.nonterminals.in_use_nonterminals()) {
-            os << "\n<" << nonterminals.find(nonterminal)->second << "> ::= ";
-            auto n = reinterpret_cast<Base *>(nonterminal->first);
-            while (n != nonterminal) {
-                auto const node = as_node(n);
-                os << ' ';
-                if (node->repeats > 1)
-                    os << node->repeats;
-                if (is_terminal(node->maps_to)) {
-                    p(as_terminal(node->maps_to), os);
-                } else
-                    os << '<' << nonterminals.find(as_nonterminal(node->maps_to))->second << '>';
-                n = node->next;
-            }
+    for (auto const & nonterminal : g.nonterminals.in_use_nonterminals()) {
+        if (occurences_count(nonterminal) == 0)
+            os << "\n+ <";
+        else
+            os << "\n  <";
+        os << nonterminals.find(nonterminal)->second << "> ::= ";
+        auto n = reinterpret_cast<Base *>(nonterminal->first);
+        while (n != nonterminal) {
+            auto const node = as_node(n);
+            os << ' ';
+            if (node->repeats > 1)
+                os << node->repeats;
+            if (is_terminal(node->maps_to)) {
+                p(as_terminal(node->maps_to), os);
+            } else
+                os << '<' << nonterminals.find(as_nonterminal(node->maps_to))->second << '>';
+            n = node->next;
         }
     }
 }
@@ -178,7 +174,6 @@ auto print_dot_file_begin(std::ostream & os) -> void {
 }
 
 auto print_dot_file_grammar(Grammar const & g,
-                            NonTerminal const * non_terminal,
                             std::ostream & os,
                             terminal_printer const & p,
                             bool print_input) -> void {
@@ -188,12 +183,6 @@ auto print_dot_file_grammar(Grammar const & g,
     auto const prefix = next_prefix++;
 
     os << "    subgraph cluster_" << prefix << " {\n";
-
-    if (print_input) {
-        os << "    label =\"";
-        print_trace(non_terminal, os, p);
-        os << "\";\n";
-    }
 
     os << "    /* terminals */\n";
 
@@ -253,12 +242,11 @@ auto print_dot_file_grammar(Grammar const & g,
 auto print_dot_file_end(std::ostream & os) -> void { os << "}"; }
 
 auto print_dot_file(Grammar const & g,
-                    NonTerminal const * non_terminal,
                     std::ostream & os,
                     terminal_printer const & p,
                     bool print_input) -> void {
     print_dot_file_begin(os);
-    print_dot_file_grammar(g, non_terminal, os, p, print_input);
+    print_dot_file_grammar(g, os, p, print_input);
     print_dot_file_end(os);
 }
 

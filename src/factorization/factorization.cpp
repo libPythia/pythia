@@ -162,7 +162,7 @@ static auto get_digram(Symbol * r, Symbol * n) -> Node * {
     return it->second;
 }
 
-static auto occurences_count(Symbol const * r) -> std::size_t {
+auto occurences_count(Symbol const * r) -> std::size_t {
     return r->occurences_with_successor.size() + r->occurences_without_successor.size();
 }
 

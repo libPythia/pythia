@@ -29,6 +29,8 @@ struct Symbol : public Base {
     Symbol(std::size_t repeat_value);
 };
 
+auto occurences_count(Symbol const * r) -> std::size_t;
+
 struct NonTerminal final : public Symbol {
     Node * first = nullptr;
     Node * last = nullptr;

@@ -206,11 +206,11 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     else
         settings.output_mode = output_t::reduced;
 
-    if (print_input && binary_output) {
+    if (print_input && (binary_output || terminals)) {
         set_color(std::cerr, color_t::red);
         std::cerr << "error: ";
         set_color(std::cerr, color_t::standard);
-        std::cerr << "--print-input is not compatible with --binary-output.\n\n";
+        std::cerr << "--print-input is not compatible with --binary-output and --terminals.\n\n";
         print_help();
         exit(errors_t::BAD_ARGUMENTS);
     }

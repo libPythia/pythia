@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iostream>
-#include <memory>
+#include <vector>
 
 #include "colors.hpp"
 #include "data.hpp"
@@ -27,22 +27,10 @@ inline auto print_debug(settings_t const & settings, T &&... args) -> void {
     }
 }
 
-enum class input_state {
-    none,
-    last,
-    yes,
+struct Input {
+    Grammar grammar;
+    std::vector<NonTerminal *> threads;
 };
 
-class Input {
-    struct Impl;
-
-  public:
-    Input(settings_t const & settings);
-    ~Input();
-
-    auto read_input(Grammar & g, NonTerminal *&) -> input_state;
-
-  private:
-    std::unique_ptr<Impl> _impl;
-};
+auto read_input(settings_t const & settings) -> Input;
 
