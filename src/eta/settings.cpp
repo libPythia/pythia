@@ -71,6 +71,7 @@ static auto print_help() -> void {
     print_option('n', "non-printable", "Don't ignore non-printable characters.");
     print_option('l', "lines", "Take each line of input as a different input to reduce");
     print_option('b', "binary-input", "Expect input to be in binary format.");
+    print_option('f', "input-file", "Read input from a file.");
     print_subsection("Output options");
     print_option('i', "print-input", "Print input before.");
     print_option('d', "dot", "Produce output under dot format.");
