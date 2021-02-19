@@ -24,7 +24,7 @@ template <typename F> static auto for_each_byte(std::istream & is, F && f) -> vo
 
 static auto read_input(settings_t const & settings, std::istream & is) -> Input {
     auto res = Input {};
-    res.threads.emplace_back(nullptr);
+    auto new_thread = true;
 
     auto for_each_byte = [&is](auto && f) -> void {
         while (true) {
@@ -37,7 +37,12 @@ static auto read_input(settings_t const & settings, std::istream & is) -> Input 
     };
 
     auto terminals = std::vector<Terminal *>(256, nullptr);
-    auto insert_symbol = [&res, &terminals](auto c, auto & nt) -> void {
+    auto insert_symbol = [&res, &terminals, &new_thread](auto c) -> void {
+        if (new_thread) {
+            res.threads.emplace_back(nullptr);
+            new_thread = false;
+        }
+        auto & nt = res.threads.back();
         auto & t = terminals[c];
         if (t == nullptr)
             t = new_terminal(res.grammar, Data::make_terminal_data(c));
@@ -56,18 +61,16 @@ static auto read_input(settings_t const & settings, std::istream & is) -> Input 
         case input_t::lines:
             for_each_byte([&](auto c) {
                 if (c == '\n')
-                    res.threads.emplace_back(nullptr);
+                    new_thread = true;
                 else if (is_printable(c))
-                    insert_symbol(c, res.threads.back());
+                    insert_symbol(c);
             });
             break;
-        case input_t::non_printable:
-            for_each_byte([&](auto c) { insert_symbol(c, res.threads.back()); });
-            break;
+        case input_t::non_printable: for_each_byte([&](auto c) { insert_symbol(c); }); break;
         case input_t::text:
             for_each_byte([&](auto c) {
                 if (is_printable(c))
-                    insert_symbol(c, res.threads.back());
+                    insert_symbol(c);
             });
             break;
     }
