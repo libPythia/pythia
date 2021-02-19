@@ -48,6 +48,7 @@ auto main(int argc, char ** argv) -> int {
             for (auto const thread : input.threads) {
                 print_input(thread);
                 print_reduced_trace(thread, std::cout, print_terminal);
+                std::cout << std::endl;
             }
             break;
         case output_t::terminals:
@@ -64,7 +65,7 @@ auto main(int argc, char ** argv) -> int {
 
     if (settings.compare != "") {
         compare(input.grammar, settings.compare, print_terminal);
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
 }
 
