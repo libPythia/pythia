@@ -58,8 +58,11 @@ eta_exe_src = [
 
 eta_exe_deps = [eta_factorizer_dep, utils_dep, eta_core]
 
-eta_exe = executable('eta', eta_exe_src, dependencies:eta_exe_deps, install:true)
-
+eta_exe = executable('eta_reduce',
+  eta_exe_src,
+  dependencies:eta_exe_deps,
+  install_rpath:get_option('prefix')/get_option('libdir'),
+  install:true)
 #----------------------------------------------------------------
 
 # pkgconfig export
