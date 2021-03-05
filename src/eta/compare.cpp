@@ -1,11 +1,10 @@
 #include <cassert>
+#include <eta/core/colors.hpp>
 #include <eta/factorization/export.hpp>
 #include <iostream>
 #include <sstream>
 #include <unordered_map>
 #include <vector>
-
-#include "colors.hpp"
 
 // -----------------------------------------------------------
 
@@ -254,17 +253,17 @@ auto compare(Grammar const & g, std::string const & str, terminal_printer const 
     auto paths = PossiblePaths {};
     for (auto const & it : trace) {
         if (it.first == nullptr) {
-            set_color(std::cout, color_t::yellow);
+            eta::set_color(std::cout, eta::color_t::yellow);
             std::cout << it.second;
 
         } else {
             auto const terminal = it.first;
             switch (next(g, paths, terminal)) {
-                case result_t::failed: set_color(std::cout, color_t::red); break;
-                case result_t::luck: set_color(std::cout, color_t::blue); break;
+                case result_t::failed: eta::set_color(std::cout, eta::color_t::red); break;
+                case result_t::luck: eta::set_color(std::cout, eta::color_t::blue); break;
                 case result_t::success:
-                    set_color(std::cout, color_t::green);
-                    set_style(std::cout, style_t::bold);
+                    eta::set_color(std::cout, eta::color_t::green);
+                    eta::set_style(std::cout, eta::style_t::bold);
                     break;
             }
             // print_possible_paths(paths, printer);
@@ -272,6 +271,6 @@ auto compare(Grammar const & g, std::string const & str, terminal_printer const 
             printer(terminal, std::cout);
         }
     }
-    set_color(std::cout, color_t::standard);  // TODO after the loop ?
-    set_style(std::cout, style_t::standard);  // TODO after the loop ?
+    eta::set_color(std::cout, eta::color_t::standard);  // TODO after the loop ?
+    eta::set_style(std::cout, eta::style_t::standard);  // TODO after the loop ?
 }

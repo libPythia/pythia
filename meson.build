@@ -11,6 +11,8 @@ install_subdir('include/eta', install_dir:get_option('includedir'))
 
 thread_dep = dependency('threads')
 
+eta_core = subproject('eta_core').get_variable('eta_core_dep')
+
 #----------------------------------------------------------------
 
 eta_factorizer_src = [
@@ -48,14 +50,13 @@ eta_factorizer_exaustive_test = executable('exaustive_test',
 #----------------------------------------------------------------
 
 eta_exe_src = [
-  'src/eta/colors.cpp',
   'src/eta/compare.cpp',
   'src/eta/input.cpp',
   'src/eta/main.cpp',
   'src/eta/settings.cpp',
 ]
 
-eta_exe_deps = [eta_factorizer_dep, utils_dep]
+eta_exe_deps = [eta_factorizer_dep, utils_dep, eta_core]
 
 eta_exe = executable('eta', eta_exe_src, dependencies:eta_exe_deps, install:true)
 

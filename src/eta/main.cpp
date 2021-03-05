@@ -1,8 +1,8 @@
+#include <eta/core/colors.hpp>
 #include <eta/factorization/bin_file.hpp>
 #include <eta/factorization/export.hpp>
 #include <iostream>
 
-#include "colors.hpp"
 #include "errors.hpp"
 #include "input.hpp"
 #include "settings.hpp"
@@ -20,9 +20,9 @@ auto main(int argc, char ** argv) -> int {
 
     auto print_input = [&](NonTerminal const * nt) {
         if (settings.print_input) {
-            set_color(std::cout, color_t::green);
+            eta::set_color(std::cout, eta::color_t::green);
             print_trace(nt, std::cout, print_terminal);
-            set_color(std::cout, color_t::standard);
+            eta::set_color(std::cout, eta::color_t::standard);
             std::cout << ": ";
         }
     };
