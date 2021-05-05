@@ -1,6 +1,13 @@
 #pragma once
 
 #include <string>
+#include <vector>
+
+enum class input_src_t {
+    file,
+    std_in,
+    argument,
+};
 
 enum class input_t {
     lines,
@@ -26,8 +33,9 @@ struct settings_t final {
     std::string compare;
 
     // input
+    input_src_t input_src;
     input_t input_mode;
-    std::string input_file;
+    std::vector<std::string> input_data;
 
     // output
     output_t output_mode;

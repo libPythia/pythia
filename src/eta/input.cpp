@@ -7,6 +7,7 @@
 #include <eta/factorization/check.hpp>
 #include <eta/factorization/export.hpp>
 #include <fstream>
+#include <sstream>
 
 #include "errors.hpp"
 
@@ -22,11 +23,13 @@ template <typename F> static auto for_each_byte(std::istream & is, F && f) -> vo
     }
 }
 
-static auto read_input(settings_t const & settings, std::istream & is) -> Input {
-    auto res = Input {};
+static auto read_input(settings_t const & settings,
+                       Input & res,
+                       std::vector<Terminal *> & terminals,
+                       std::istream & is) -> void {
     auto new_thread = true;
 
-    auto for_each_byte = [&is](auto && f) -> void {
+    auto for_each_byte = [](auto & is, auto && f) -> void {
         while (true) {
             auto c = char {};
             is.read(&c, sizeof(c));
@@ -36,7 +39,6 @@ static auto read_input(settings_t const & settings, std::istream & is) -> Input 
         }
     };
 
-    auto terminals = std::vector<Terminal *>(256, nullptr);
     auto insert_symbol = [&res, &terminals, &new_thread](auto c) -> void {
         if (new_thread) {
             res.threads.emplace_back(nullptr);
@@ -59,39 +61,55 @@ static auto read_input(settings_t const & settings, std::istream & is) -> Input 
             break;
         }
         case input_t::lines:
-            for_each_byte([&](auto c) {
+            for_each_byte(is, [&](auto c) {
                 if (c == '\n')
                     new_thread = true;
                 else if (is_printable(c))
                     insert_symbol(c);
             });
             break;
-        case input_t::non_printable: for_each_byte([&](auto c) { insert_symbol(c); }); break;
+        case input_t::non_printable: for_each_byte(is, [&](auto c) { insert_symbol(c); }); break;
         case input_t::text:
-            for_each_byte([&](auto c) {
+            for_each_byte(is, [&](auto c) {
                 if (is_printable(c))
                     insert_symbol(c);
             });
             break;
     }
-
-    return res;
 }
 
 auto read_input(settings_t const & settings) -> Input {
-    if (settings.input_file != "") {
-        auto input_file = std::fstream {};
-        input_file.open(settings.input_file, std::fstream::binary);
-        if (!input_file.is_open()) {
-            input_file.open(settings.input_file);
-            if (!input_file.is_open()) {
-                print_error("Failed to open file.");
-                exit(errors_t::FAILED_TO_OPEN_INPUT_FILE);
+    auto terminals = std::vector<Terminal *>(256, nullptr);
+    auto res = Input {};
+
+    switch (settings.input_src) {
+        case input_src_t::argument: {
+            for (auto const & input : settings.input_data) {
+                auto ss = std::stringstream {};
+                ss << input;
+                read_input(settings, res, terminals, ss);
             }
-        }
-        return read_input(settings, input_file);
-    } else {
-        return read_input(settings, std::cin);
+        } break;
+        case input_src_t::file: {
+            for (auto const & input_file : settings.input_data) {
+                auto file = std::ifstream {};
+                file.open(input_file, std::fstream::binary);
+                if (!file.is_open()) {
+                    file.open(input_file);
+                    if (!file.is_open()) {
+                        print_error("Failed to open file.");
+                        exit(errors_t::FAILED_TO_OPEN_INPUT_FILE);
+                    }
+                }
+                read_input(settings, res, terminals, file);
+            }
+        } break;
+        case input_src_t::std_in: {
+            read_input(settings, res, terminals, std::cin);
+        } break;
+        default: assert(false);
     }
+
+    return res;
 }
 

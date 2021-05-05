@@ -36,6 +36,7 @@ static auto print_help() -> void {
     eta::print_option('l', "lines", "Take each line of input as a different input to reduce");
     eta::print_option('b', "binary-input", "Expect input to be in binary format.");
     eta::print_option('f', "input-file", "Read input from a file.");
+    eta::print_option('s', "input-string", "Give string at input directly.");
     eta::print_subsection("Output options");
     eta::print_option('i', "print-input", "Print input before.");
     eta::print_option('d', "dot", "Produce output under dot format.");
@@ -74,7 +75,8 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     auto & non_printable_opt = parser["non-printable"].abbreviation('n');
     auto & line_opt = parser["lines"].abbreviation('l');
     auto & binary_input_opt = parser["binary-input"].abbreviation('b');
-    auto & input_file_opt = parser["input-file"].abbreviation('f').type(po::string);
+    auto & input_file_opt = parser["input-file"].abbreviation('f').type(po::string).multi();
+    auto & input_str_opt = parser["input-string"].abbreviation('s').type(po::string).multi();
 
     // output
     auto & print_input_opt = parser["print-input"].abbreviation('i');
@@ -102,6 +104,7 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     auto const lines = line_opt.was_set();
     auto const binary_input = binary_input_opt.was_set();
     auto const input_file = input_file_opt.was_set();
+    auto const input_string = input_str_opt.was_set();
 
     // output
     auto const print_input = print_input_opt.was_set();
@@ -140,8 +143,26 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     else
         settings.input_mode = input_t::text;
 
-    if (input_file)
-        settings.input_file = input_file_opt.get().string;
+    if (input_file && input_string) {
+        set_color(std::cerr, eta::color_t::red);
+        std::cerr << "error: ";
+        set_color(std::cerr, eta::color_t::standard);
+        std::cerr << "--input-string and --input_file are mutually exclusive.\n\n";
+        print_help();
+        exit(errors_t::BAD_ARGUMENTS);
+    }
+    if (input_file) {
+        // settings.input_file = input_file_opt.get().string; TODO
+        settings.input_src = input_src_t::file;
+        for (auto const & file_name : input_file_opt)
+            settings.input_data.emplace_back(file_name.string);
+    } else if (input_string) {
+        settings.input_src = input_src_t::argument;
+        for (auto const & input : input_str_opt)
+            settings.input_data.emplace_back(input.string);
+    } else {
+        settings.input_src = input_src_t::std_in;
+    }
 
     // output settings
 

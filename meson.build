@@ -20,6 +20,7 @@ eta_factorizer_src = [
     'src/factorization/check.cpp',
     'src/factorization/export.cpp',
     'src/factorization/factorization.cpp',
+    'src/factorization/prediction.cpp',
 ]
 
 eta_factorizer_lib = static_library('eta_factorizer',
