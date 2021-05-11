@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <vector>
 
-struct Base;
+struct GrammarBaseObject;
 struct GrammarNode;
 struct Symbol;
 struct NonTerminal;
@@ -14,14 +14,14 @@ struct Terminal;
 
 // ----------------------------------------------------------
 
-struct Base {
+struct GrammarBaseObject {
     std::size_t repeats;
 
   protected:
-    Base(std::size_t repeat_value);
+    GrammarBaseObject(std::size_t repeat_value);
 };
 
-struct Symbol : public Base {
+struct Symbol : public GrammarBaseObject {
     std::unordered_map<Symbol *, GrammarNode *> occurrences_with_successor;
     std::unordered_set<GrammarNode *> occurrences_without_successor;
 
@@ -44,28 +44,28 @@ struct Terminal final : public Symbol {
     Terminal();
 };
 
-struct GrammarNode final : public Base {
-    Base * next = nullptr;      // GrammarNode or nonterminal
-    Base * previous = nullptr;  // GrammarNode or nonterminal
+struct GrammarNode final : public GrammarBaseObject {
+    GrammarBaseObject * next = nullptr;      // GrammarNode or nonterminal
+    GrammarBaseObject * previous = nullptr;  // GrammarNode or nonterminal
     Symbol * maps_to;
 
-    GrammarNode() : Base(1) {}
+    GrammarNode() : GrammarBaseObject(1) {}
 };
 
 // ----------------------------------------------------------
 
-auto is_nonterminal(Base const * n) -> bool;
-auto as_nonterminal(Base * n) -> NonTerminal *;
-auto as_nonterminal(Base const * n) -> NonTerminal const *;
-auto is_terminal(Base const * n) -> bool;
-auto as_terminal(Base * n) -> Terminal *;
-auto as_terminal(Base const * n) -> Terminal const *;
-auto is_symbol(Base const * n) -> bool;
-auto as_symbol(Base * n) -> Symbol *;
-auto as_symbol(Base const * n) -> Symbol const *;
-auto is_node(Base const * n) -> bool;
-auto as_node(Base * n) -> GrammarNode *;
-auto as_node(Base const * n) -> GrammarNode const *;
+auto is_nonterminal(GrammarBaseObject const * n) -> bool;
+auto as_nonterminal(GrammarBaseObject * n) -> NonTerminal *;
+auto as_nonterminal(GrammarBaseObject const * n) -> NonTerminal const *;
+auto is_terminal(GrammarBaseObject const * n) -> bool;
+auto as_terminal(GrammarBaseObject * n) -> Terminal *;
+auto as_terminal(GrammarBaseObject const * n) -> Terminal const *;
+auto is_symbol(GrammarBaseObject const * n) -> bool;
+auto as_symbol(GrammarBaseObject * n) -> Symbol *;
+auto as_symbol(GrammarBaseObject const * n) -> Symbol const *;
+auto is_node(GrammarBaseObject const * n) -> bool;
+auto as_node(GrammarBaseObject * n) -> GrammarNode *;
+auto as_node(GrammarBaseObject const * n) -> GrammarNode const *;
 auto is_first(GrammarNode const * n) -> bool;
 auto is_last(GrammarNode const * n) -> bool;
 auto next_node(GrammarNode * n) -> GrammarNode *;

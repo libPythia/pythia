@@ -16,50 +16,50 @@
 static auto constexpr nonterminal_repeats_value = std::size_t(-1);
 static auto constexpr terminal_repeats_value = std::size_t(0);
 
-Base::Base(std::size_t repeat_value) : repeats(repeat_value) {}
-Symbol::Symbol(std::size_t repeat_value) : Base(repeat_value) {}
+GrammarBaseObject::GrammarBaseObject(std::size_t repeat_value) : repeats(repeat_value) {}
+Symbol::Symbol(std::size_t repeat_value) : GrammarBaseObject(repeat_value) {}
 NonTerminal::NonTerminal() : Symbol(nonterminal_repeats_value) {}
 Terminal::Terminal() : Symbol(terminal_repeats_value) {}
 
 // ----------------------------------------------------------
 
-auto is_nonterminal(Base const * n) -> bool { return n->repeats == nonterminal_repeats_value; }
-auto as_nonterminal(Base * n) -> NonTerminal * {
+auto is_nonterminal(GrammarBaseObject const * n) -> bool { return n->repeats == nonterminal_repeats_value; }
+auto as_nonterminal(GrammarBaseObject * n) -> NonTerminal * {
     assert(is_nonterminal(n));
     return reinterpret_cast<NonTerminal *>(n);
 }
-auto as_nonterminal(Base const * n) -> NonTerminal const * {
+auto as_nonterminal(GrammarBaseObject const * n) -> NonTerminal const * {
     assert(is_nonterminal(n));
     return reinterpret_cast<NonTerminal const *>(n);
 }
 
-auto is_terminal(Base const * n) -> bool { return n->repeats == terminal_repeats_value; }
-auto as_terminal(Base * n) -> Terminal * {
+auto is_terminal(GrammarBaseObject const * n) -> bool { return n->repeats == terminal_repeats_value; }
+auto as_terminal(GrammarBaseObject * n) -> Terminal * {
     assert(is_terminal(n));
     return reinterpret_cast<Terminal *>(n);
 }
-auto as_terminal(Base const * n) -> Terminal const * {
+auto as_terminal(GrammarBaseObject const * n) -> Terminal const * {
     assert(is_terminal(n));
     return reinterpret_cast<Terminal const *>(n);
 }
 
-auto is_symbol(Base const * n) -> bool { return is_terminal(n) || is_nonterminal(n); }
-auto as_symbol(Base * n) -> Symbol * {
+auto is_symbol(GrammarBaseObject const * n) -> bool { return is_terminal(n) || is_nonterminal(n); }
+auto as_symbol(GrammarBaseObject * n) -> Symbol * {
     assert(is_symbol(n));
     return reinterpret_cast<Symbol *>(n);
 }
-auto as_symbol(Base const * n) -> Symbol const * {
+auto as_symbol(GrammarBaseObject const * n) -> Symbol const * {
     assert(is_symbol(n));
     return reinterpret_cast<Symbol const *>(n);
 }
 
 static_assert(sizeof(GrammarNode) == 32);
-auto is_node(Base const * n) -> bool { return !is_symbol(n); }
-auto as_node(Base * n) -> GrammarNode * {
+auto is_node(GrammarBaseObject const * n) -> bool { return !is_symbol(n); }
+auto as_node(GrammarBaseObject * n) -> GrammarNode * {
     assert(is_node(n));
     return reinterpret_cast<GrammarNode *>(n);
 }
-auto as_node(Base const * n) -> GrammarNode const * {
+auto as_node(GrammarBaseObject const * n) -> GrammarNode const * {
     assert(is_node(n));
     return reinterpret_cast<GrammarNode const *>(n);
 }

@@ -7,7 +7,7 @@
 struct Path final {
     std::vector < validated
 };
-using Path = std::vector<Base const *>;
+using Path = std::vector<GrammarBaseObject const *>;
 
 auto first_terminal(Symbol const * const n) -> Terminal const * {
     if (is_terminal(n)) {

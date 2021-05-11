@@ -134,7 +134,7 @@ auto print_grammar(Grammar const & g, std::ostream & os, terminal_printer const 
         else
             os << "\n  <";
         os << nonterminals.find(nonterminal)->second << "> ::= ";
-        auto n = reinterpret_cast<Base *>(nonterminal->first);
+        auto n = reinterpret_cast<GrammarBaseObject *>(nonterminal->first);
         while (n != nonterminal) {
             auto const node = as_node(n);
             os << ' ';
