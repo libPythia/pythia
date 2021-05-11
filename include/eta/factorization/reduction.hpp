@@ -7,7 +7,7 @@
 #include <vector>
 
 struct Base;
-struct Node;
+struct GrammarNode;
 struct Symbol;
 struct NonTerminal;
 struct Terminal;
@@ -22,8 +22,8 @@ struct Base {
 };
 
 struct Symbol : public Base {
-    std::unordered_map<Symbol *, Node *> occurrences_with_successor;
-    std::unordered_set<Node *> occurrences_without_successor;
+    std::unordered_map<Symbol *, GrammarNode *> occurrences_with_successor;
+    std::unordered_set<GrammarNode *> occurrences_without_successor;
 
   protected:
     Symbol(std::size_t repeat_value);
@@ -32,8 +32,8 @@ struct Symbol : public Base {
 auto occurrences_count(Symbol const * r) -> std::size_t;
 
 struct NonTerminal final : public Symbol {
-    Node * first = nullptr;
-    Node * last = nullptr;
+    GrammarNode * first = nullptr;
+    GrammarNode * last = nullptr;
 
     NonTerminal();
 };
@@ -44,12 +44,12 @@ struct Terminal final : public Symbol {
     Terminal();
 };
 
-struct Node final : public Base {
-    Base * next = nullptr;      // Node or nonterminal
-    Base * previous = nullptr;  // Node or nonterminal
+struct GrammarNode final : public Base {
+    Base * next = nullptr;      // GrammarNode or nonterminal
+    Base * previous = nullptr;  // GrammarNode or nonterminal
     Symbol * maps_to;
 
-    Node() : Base(1) {}
+    GrammarNode() : Base(1) {}
 };
 
 // ----------------------------------------------------------
@@ -64,12 +64,12 @@ auto is_symbol(Base const * n) -> bool;
 auto as_symbol(Base * n) -> Symbol *;
 auto as_symbol(Base const * n) -> Symbol const *;
 auto is_node(Base const * n) -> bool;
-auto as_node(Base * n) -> Node *;
-auto as_node(Base const * n) -> Node const *;
-auto is_first(Node const * n) -> bool;
-auto is_last(Node const * n) -> bool;
-auto next_node(Node * n) -> Node *;
-auto previous_node(Node * n) -> Node *;
+auto as_node(Base * n) -> GrammarNode *;
+auto as_node(Base const * n) -> GrammarNode const *;
+auto is_first(GrammarNode const * n) -> bool;
+auto is_last(GrammarNode const * n) -> bool;
+auto next_node(GrammarNode * n) -> GrammarNode *;
+auto previous_node(GrammarNode * n) -> GrammarNode *;
 
 // ----------------------------------------------------------
 
@@ -77,16 +77,16 @@ class NodeFactory final {
     static auto constexpr chunk_size = 1024;
 
   public:
-    auto new_node() -> Node *;
-    auto release_node(Node * n) -> void;
+    auto new_node() -> GrammarNode *;
+    auto release_node(GrammarNode * n) -> void;
     NodeFactory();
 
   private:
     auto new_chunk() -> void;
 
   private:
-    std::vector<std::vector<Node>> storage;
-    Node * unused_nodes = nullptr;
+    std::vector<std::vector<GrammarNode>> storage;
+    GrammarNode * unused_nodes = nullptr;
 };
 
 // ----------------------------------------------------------

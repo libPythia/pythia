@@ -6,7 +6,7 @@
 
 struct Estimation {
     struct Parent {
-        Node const * node = nullptr;
+        GrammarNode const * node = nullptr;
         Parent * next = nullptr;
         Parent * parents = nullptr;
         size_t count = 0;
@@ -27,7 +27,7 @@ auto deinit_estimation(Estimation * e) -> void;
 
 struct Prediction {
     struct Parent {
-        Node const * node = nullptr;
+        GrammarNode const * node = nullptr;
         Parent * next = nullptr;
         Parent * parents = nullptr;
         size_t count = 0;

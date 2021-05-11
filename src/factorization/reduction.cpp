@@ -53,27 +53,27 @@ auto as_symbol(Base const * n) -> Symbol const * {
     return reinterpret_cast<Symbol const *>(n);
 }
 
-static_assert(sizeof(Node) == 32);
+static_assert(sizeof(GrammarNode) == 32);
 auto is_node(Base const * n) -> bool { return !is_symbol(n); }
-auto as_node(Base * n) -> Node * {
+auto as_node(Base * n) -> GrammarNode * {
     assert(is_node(n));
-    return reinterpret_cast<Node *>(n);
+    return reinterpret_cast<GrammarNode *>(n);
 }
-auto as_node(Base const * n) -> Node const * {
+auto as_node(Base const * n) -> GrammarNode const * {
     assert(is_node(n));
-    return reinterpret_cast<Node const *>(n);
+    return reinterpret_cast<GrammarNode const *>(n);
 }
-auto is_first(Node const * n) -> bool { return is_nonterminal(n->previous); }
-auto is_last(Node const * n) -> bool { return is_nonterminal(n->next); }
-auto next_node(Node * n) -> Node * { return as_node(n->next); }
-auto previous_node(Node * n) -> Node * { return as_node(n->previous); }
+auto is_first(GrammarNode const * n) -> bool { return is_nonterminal(n->previous); }
+auto is_last(GrammarNode const * n) -> bool { return is_nonterminal(n->next); }
+auto next_node(GrammarNode * n) -> GrammarNode * { return as_node(n->next); }
+auto previous_node(GrammarNode * n) -> GrammarNode * { return as_node(n->previous); }
 
 // ----------------------------------------------------------
 
-auto NodeFactory::new_node() -> Node * {
+auto NodeFactory::new_node() -> GrammarNode * {
     if (unused_nodes != nullptr) {
         auto const res = unused_nodes;
-        unused_nodes = reinterpret_cast<Node *>(res->next);
+        unused_nodes = reinterpret_cast<GrammarNode *>(res->next);
         return res;
     } else {
         if (storage.back().size() == storage.back().capacity())
@@ -82,7 +82,7 @@ auto NodeFactory::new_node() -> Node * {
         return &storage.back().back();
     }
 }
-auto NodeFactory::release_node(Node * n) -> void {
+auto NodeFactory::release_node(GrammarNode * n) -> void {
     n->next = unused_nodes;
     unused_nodes = n;
 }
@@ -111,7 +111,7 @@ auto NonTerminalFactory::new_nonterminal() -> NonTerminal * {
 
 auto NonTerminalFactory::release_nonterminal(NonTerminal * n) -> void {
     n->last = nullptr;
-    n->first = reinterpret_cast<Node *>(unused_nonterminals);
+    n->first = reinterpret_cast<GrammarNode *>(unused_nonterminals);
     unused_nonterminals = n;
 }
 
@@ -135,8 +135,8 @@ auto NonTerminalFactory::new_chunk() -> void {
 
 // ----------------------------------------------------------
 
-static auto new_node(Grammar & g) -> Node * { return g.nodes.new_node(); }
-static auto remove_node(Grammar & g, Node * n) -> void { g.nodes.release_node(n); }
+static auto new_node(Grammar & g) -> GrammarNode * { return g.nodes.new_node(); }
+static auto remove_node(Grammar & g, GrammarNode * n) -> void { g.nodes.release_node(n); }
 
 auto new_terminal(Grammar & g, void * payload) -> Terminal * {
     g.terminals.push_back(std::make_unique<Terminal>());
@@ -155,7 +155,7 @@ static auto remove_nonterminal(Grammar & g, NonTerminal * n) -> void {
 
 // ----------------------------------------------------------
 
-static auto get_digram(Symbol * r, Symbol * n) -> Node * {
+static auto get_digram(Symbol * r, Symbol * n) -> GrammarNode * {
     auto const it = r->occurrences_with_successor.find(n);
     if (it == r->occurrences_with_successor.end())
         return nullptr;
@@ -166,7 +166,7 @@ auto occurrences_count(Symbol const * r) -> std::size_t {
     return r->occurrences_with_successor.size() + r->occurrences_without_successor.size();
 }
 
-static auto add_occurrence(Symbol * rule, Node * parent, Symbol * next) -> void {
+static auto add_occurrence(Symbol * rule, GrammarNode * parent, Symbol * next) -> void {
     if (next == nullptr) {
         rule->occurrences_without_successor.emplace(parent);
     } else {
@@ -174,7 +174,7 @@ static auto add_occurrence(Symbol * rule, Node * parent, Symbol * next) -> void 
     }
 }
 
-static auto remove_occurrence(Symbol * rule, Node * parent, Symbol * next) -> void {
+static auto remove_occurrence(Symbol * rule, GrammarNode * parent, Symbol * next) -> void {
     if (next == nullptr) {
         rule->occurrences_without_successor.extract(parent);
     } else {
@@ -182,7 +182,7 @@ static auto remove_occurrence(Symbol * rule, Node * parent, Symbol * next) -> vo
     }
 }
 
-static auto replace_occurrence(Symbol * rule, Node * parent, Symbol * old_next, Symbol * new_next)
+static auto replace_occurrence(Symbol * rule, GrammarNode * parent, Symbol * old_next, Symbol * new_next)
         -> void {
     remove_occurrence(rule, parent, old_next);
     add_occurrence(rule, parent, new_next);

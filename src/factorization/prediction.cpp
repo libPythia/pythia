@@ -8,7 +8,7 @@
 // ----------------------------------------------------------------
 
 template <typename T>
-static auto add_parent_to_parent_list(T * e, typename T::Parent *& p, Node const * n) ->
+static auto add_parent_to_parent_list(T * e, typename T::Parent *& p, GrammarNode const * n) ->
         typename T::Parent * {
     // TODO derecursify ?
     if (p == nullptr) {  // End of list, add new parents
@@ -104,7 +104,7 @@ static auto release_parents(Estimation * e, Estimation::Parent * p) {
 
 // ----------------------------------------------------------------
 
-static auto descend(Estimation * e, Node const * n) -> Estimation::Parent * {
+static auto descend(Estimation * e, GrammarNode const * n) -> Estimation::Parent * {
     if (is_terminal(n->maps_to)) {
         auto const t = as_terminal(n->maps_to);
         if (t == e->terminal)
@@ -213,7 +213,7 @@ static auto release_parents(Prediction * e, Prediction::Parent * p) -> void {
     }
 }
 
-static auto descend(Prediction * e, Node const * n) -> Prediction::Parent * {
+static auto descend(Prediction * e, GrammarNode const * n) -> Prediction::Parent * {
     if (is_terminal(n->maps_to))
         return add_parent_to_parent_list(e, e->parents, n);
 

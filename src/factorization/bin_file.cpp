@@ -112,7 +112,7 @@ static auto load_bin_file_impl(Grammar & grammar, std::istream & is) -> void {
 
     for (auto i = terminals_count; i < symbols.size(); ++i) {
         auto nonterminal = static_cast<NonTerminal *>(symbols[i]);
-        auto previous_node = static_cast<Node *>(nullptr);
+        auto previous_node = static_cast<GrammarNode *>(nullptr);
         while (true) {
             auto maps_to = read_nb<bin_size_t>(is);
             if (maps_to == end_sentinel<bin_size_t>) {
