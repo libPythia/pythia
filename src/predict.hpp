@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cassert>
-#include <eta/factorization/factorization.hpp>
+#include <eta/factorization/reduction.hpp>
 #include <vector>
 
 struct Path final {

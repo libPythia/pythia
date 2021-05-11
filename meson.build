@@ -19,7 +19,7 @@ eta_factorizer_src = [
     'src/factorization/bin_file.cpp',
     'src/factorization/check.cpp',
     'src/factorization/export.cpp',
-    'src/factorization/factorization.cpp',
+    'src/factorization/reduction.cpp',
     'src/factorization/prediction.cpp',
 ]
 

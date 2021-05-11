@@ -2,7 +2,7 @@
 #include <istream>
 #include <ostream>
 
-#include "factorization.hpp"
+#include "reduction.hpp"
 
 using terminal_printer = std::function<void(Terminal const *, std::ostream &)>;
 

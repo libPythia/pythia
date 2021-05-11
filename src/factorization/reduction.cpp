@@ -1,4 +1,4 @@
-#include "factorization.hpp"
+#include "reduction.hpp"
 
 #include <cassert>
 

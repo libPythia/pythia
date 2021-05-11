@@ -1,7 +1,7 @@
 #include <chrono>
 #include <eta/factorization/check.hpp>
 #include <eta/factorization/export.hpp>
-#include <eta/factorization/factorization.hpp>
+#include <eta/factorization/reduction.hpp>
 #include <fstream>
 #include <iostream>
 #include <iterator>

@@ -4,7 +4,7 @@
 #include <ctime>
 #include <eta/factorization/check.hpp>
 #include <eta/factorization/export.hpp>
-#include <eta/factorization/factorization.hpp>
+#include <eta/factorization/reduction.hpp>
 #include <iostream>
 #include <mutex>
 #include <random>

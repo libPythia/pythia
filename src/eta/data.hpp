@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstring>
-#include <eta/factorization/factorization.hpp>
+#include <eta/factorization/reduction.hpp>
 
 struct Data {
     Grammar grammar;

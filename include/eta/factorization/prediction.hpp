@@ -1,6 +1,6 @@
 #pragma once
 
-#include "factorization.hpp"
+#include "reduction.hpp"
 
 // -----------------------------------------------------------
 
