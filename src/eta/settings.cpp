@@ -33,7 +33,8 @@ static auto print_help() -> void {
     eta::print_option(0, "compare", "Give a string to compare to each input");
     eta::print_subsection("Input options");
     eta::print_option('n', "non-printable", "Don't ignore non-printable characters.");
-    eta::print_option('l', "lines", "Take each line of input as a different input to reduce");
+    eta::print_option('l', "logs", "Take each line of input as an atomic item");
+    eta::print_option('L', "lines", "Take each line of input as a different string to reduce");
     eta::print_option('b', "binary-input", "Expect input to be in binary format.");
     eta::print_option('f', "input-file", "Read input from a file.");
     eta::print_option('s', "input-string", "Give string at input directly.");
@@ -74,7 +75,8 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
 
     // input
     auto & non_printable_opt = parser["non-printable"].abbreviation('n');
-    auto & line_opt = parser["lines"].abbreviation('l');
+    auto & line_opt = parser["lines"].abbreviation('L');
+    auto & logs_opt = parser["logs"].abbreviation('l');
     auto & binary_input_opt = parser["binary-input"].abbreviation('b');
     auto & input_file_opt = parser["input-file"].abbreviation('f').type(po::string).multi();
     auto & input_str_opt = parser["input-string"].abbreviation('s').type(po::string).multi();
@@ -104,6 +106,7 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     // input
     auto const non_printable = non_printable_opt.was_set();
     auto const lines = line_opt.was_set();
+    auto const logs = logs_opt.was_set();
     auto const binary_input = binary_input_opt.was_set();
     auto const input_file = input_file_opt.was_set();
     auto const input_string = input_str_opt.was_set();
@@ -129,11 +132,12 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     eta::disable_colors(no_color);
 
     // input settings
-    if (count_bools(non_printable, lines, binary_input) > 1) {
+    if (count_bools(non_printable, lines, binary_input, logs) > 1) {
         set_color(std::cerr, eta::color_t::red);
         std::cerr << "error: ";
         set_color(std::cerr, eta::color_t::standard);
-        std::cerr << "--non-printable, --lines and --binary-input are mutually exclusive.\n\n";
+        std::cerr << "--non-printable, --lines, --logs and --binary-input are mutually "
+                     "exclusive.\n\n";
         print_help();
         exit(errors_t::BAD_ARGUMENTS);
     }
@@ -143,6 +147,8 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
         settings.input_mode = input_t::non_printable;
     else if (lines)
         settings.input_mode = input_t::lines;
+    else if (logs)
+        settings.input_mode = input_t::logs;
     else
         settings.input_mode = input_t::text;
 

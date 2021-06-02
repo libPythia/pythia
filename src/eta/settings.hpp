@@ -10,6 +10,7 @@ enum class input_src_t {
 };
 
 enum class input_t {
+    logs,
     lines,
     text,
     non_printable,

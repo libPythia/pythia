@@ -14,6 +14,10 @@ struct Data {
         return static_cast<void *>(res);
     }
 
+    static auto make_terminal_data(char const * str) -> void * {
+        return static_cast<void *>(strdup(str));
+    }
+
     static auto make_terminal_data(char const * str, int size = -1) -> void * {
         if (size < 0)
             size = strlen(str);
