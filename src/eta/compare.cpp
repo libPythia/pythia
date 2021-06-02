@@ -26,7 +26,7 @@ static auto print_symbol(Symbol const * s, terminal_printer const & printer) -> 
 
 // -----------------------------------------------------------
 
-auto compare(Grammar const & g, std::string const & str, terminal_printer const & printer) -> void {
+auto compare(Grammar & g, std::string const & str, terminal_printer const & printer) -> void {
     std::cout << std::endl;
 
     auto const trace = [&]() {
@@ -52,29 +52,25 @@ auto compare(Grammar const & g, std::string const & str, terminal_printer const 
     auto e = Estimation {};
     auto p = Prediction {};
     auto p2 = Prediction {};
-    init_estimation(&e, &g);
-    init_prediction(&p);
-    init_prediction(&p2);
-    assert(e.parents == nullptr);  // TODO temporaire
+    auto fg = buildFlowGraph(g);
+
+    init_estimation(&e, &fg);
+    // init_prediction(&p);
+    // init_prediction(&p2);
+    // assert(e.parents == nullptr);  // TODO temporaire
 
     for (auto const & it : trace) {
         update_estimation(&e, it.first);
-        std::cout << "# Update ";
-        print_symbol(e.parents->node->maps_to, printer);
-        std::cout << std::endl;
-        assert(it.first == nullptr || e.parents != nullptr);
+        std::cout << "# Update " << it.second << std::endl;
         auto first = true;
         if (reset_prediction(&p, &e)) {
             do {
-                assert(p.parents != nullptr);
-                // assert(is_terminal(p.parents->node));
                 if (first) {
                     first = false;
                     std::cout << "-> Predict ";
                 } else
                     std::cout << ", ";
-                print_symbol(p.parents->node->maps_to, printer);
-
+                print_symbol(get_terminal(&p), printer);
                 copy_prediction(&p2, &p);
                 if (get_prediction_tree_child(&p2)) {
                     auto first2 = true;
@@ -85,7 +81,7 @@ auto compare(Grammar const & g, std::string const & str, terminal_printer const 
                         } else {
                             std::cout << ", ";
                         }
-                        print_symbol(p2.parents->node->maps_to, printer);
+                        print_symbol(get_terminal(&p2), printer);
                     } while (get_prediction_tree_sibling(&p2));
                     std::cout << ')';
                 }
@@ -95,9 +91,9 @@ auto compare(Grammar const & g, std::string const & str, terminal_printer const 
         std::cout << std::endl;
     }
 
-    deinit_prediction(&p2);
-    deinit_prediction(&p);
-    deinit_estimation(&e);
+    // deinit_prediction(&p2);
+    // deinit_prediction(&p);
+    // deinit_estimation(&e);
 
     eta::set_color(std::cout, eta::color_t::standard);  // TODO after the loop ?
     eta::set_style(std::cout, eta::style_t::standard);  // TODO after the loop ?

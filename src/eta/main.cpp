@@ -7,7 +7,7 @@
 #include "input.hpp"
 #include "settings.hpp"
 
-auto compare(Grammar const & g, std::string const & str, terminal_printer const & printer) -> void;
+auto compare(Grammar & g, std::string const & str, terminal_printer const & printer) -> void;
 
 auto main(int argc, char ** argv) -> int {
     auto const settings = parse_settings(argc, argv);
@@ -32,6 +32,9 @@ auto main(int argc, char ** argv) -> int {
 
         case output_t::dot: {
             print_dot_file(input.grammar, std::cout, print_terminal, settings.print_input);
+        } break;
+        case output_t::flow: {
+            print_flow_graph(buildFlowGraph(input.grammar), std::cout, print_terminal);
         } break;
         case output_t::expend: {
             for (auto const thread : input.threads) {

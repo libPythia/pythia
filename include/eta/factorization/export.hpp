@@ -3,6 +3,7 @@
 #include <functional>
 #include <ostream>
 
+#include "prediction.hpp"
 #include "reduction.hpp"
 
 using terminal_printer = std::function<void(Terminal const *, std::ostream &)>;
@@ -20,3 +21,5 @@ auto print_dot_file_grammar(Grammar const &,
 auto print_dot_file_end(std::ostream &) -> void;
 auto print_dot_file(Grammar const &, std::ostream &, terminal_printer const &, bool print_input)
         -> void;
+
+auto print_flow_graph(FlowGraph const &, std::ostream &, terminal_printer const &) -> void;

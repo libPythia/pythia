@@ -19,6 +19,7 @@ enum class input_t {
 enum class output_t {
     reduced,
     dot,
+    flow,
     grammar,
     binary,
     expend,

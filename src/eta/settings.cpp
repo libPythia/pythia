@@ -40,6 +40,7 @@ static auto print_help() -> void {
     eta::print_subsection("Output options");
     eta::print_option('i', "print-input", "Print input before.");
     eta::print_option('d', "dot", "Produce output under dot format.");
+    eta::print_option('F', "flow", "Output the flowgraph under dot format.");
     eta::print_option('g', "grammar", "Format output as a grammar.");
     eta::print_option('B', "binary-output", "Use binary format for output");
     eta::print_option('e', "expend", "Print original input");
@@ -81,6 +82,7 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     // output
     auto & print_input_opt = parser["print-input"].abbreviation('i');
     auto & dot_opt = parser["dot"].abbreviation('d');
+    auto & flow_opt = parser["flow"].abbreviation('F');
     auto & grammar_opt = parser["grammar"].abbreviation('g');
     auto & binary_output_opt = parser["binary-output"].abbreviation('B');
     auto & no_color_opt = parser["no-color"];
@@ -109,6 +111,7 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     // output
     auto const print_input = print_input_opt.was_set();
     auto const dot = dot_opt.was_set();
+    auto const flow = flow_opt.was_set();
     auto const grammar = grammar_opt.was_set();
     auto const binary_output = binary_output_opt.was_set();
     auto const expend = expend_opt.was_set();
@@ -166,11 +169,12 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
 
     // output settings
 
-    if (count_bools(dot, grammar, expend, binary_output, terminals) > 1) {
+    if (count_bools(dot, flow, grammar, expend, binary_output, terminals) > 1) {
         set_color(std::cerr, eta::color_t::red);
         std::cerr << "error: ";
         set_color(std::cerr, eta::color_t::standard);
-        std::cerr << "--dot, --expend, --grammar, --terminals and --binary-output are mutually "
+        std::cerr << "--dot, --flow, --expend, --grammar, --terminals and --binary-output are "
+                     "mutually "
                      "exclusive.\n\n";
         print_help();
         exit(errors_t::BAD_ARGUMENTS);
@@ -178,6 +182,8 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
 
     if (dot)
         settings.output_mode = output_t::dot;
+    else if (flow)
+        settings.output_mode = output_t::flow;
     else if (grammar)
         settings.output_mode = output_t::grammar;
     else if (binary_output)

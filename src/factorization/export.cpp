@@ -125,6 +125,30 @@ static auto build_non_terminal_names(Grammar const & g)
     return res;
 }
 
+static auto build_non_terminal_names(FlowGraph const & fg)
+        -> std::unordered_map<size_t, std::string> {
+    auto res = std::unordered_map<size_t, std::string> {};
+    auto tmp = std::string {};
+    auto incr = [&tmp](auto rec, int index) -> void {
+        if (index == -1) {
+            tmp = "A" + tmp;
+        } else if (tmp[index] == 'Z') {
+            tmp[index] = 'A';
+            rec(rec, index - 1);
+        } else {
+            ++tmp[index];
+        }
+    };
+    for (auto i = 0u; i < fg.patterns.size(); ++i) {  // TODO
+        auto const & pattern = fg.patterns[i];
+        if (is_nonterminal(pattern.symbol)) {
+            incr(incr, tmp.size() - 1);
+            res.emplace(i, tmp);
+        }
+    }
+    return res;
+}
+
 auto print_grammar(Grammar const & g, std::ostream & os, terminal_printer const & p) -> void {
     auto const nonterminals = build_non_terminal_names(g);
 
@@ -250,3 +274,93 @@ auto print_dot_file(Grammar const & g,
     print_dot_file_end(os);
 }
 
+auto print_flow_graph(FlowGraph const & fg, std::ostream & os, terminal_printer const & tp)
+        -> void {
+    auto const color = "white";
+    auto const non_terminals_names = build_non_terminal_names(fg);
+
+    os << "digraph g {\n"
+          "    rankdir=TD;\n"
+          "    bgcolor=\"transparent\";\n"
+          "    color=\""
+       << color
+       << "\";\n"
+          "    labeljust=\"c\";\n"
+          "    labelloc=\"c\";\n"
+          "    fontcolor=\""
+       << color << "\";\n";
+
+    os << "    node [color=\"" << color << "\", fontcolor=\"" << color << "\", shape=rectangle];\n";
+    os << "    edge [color=\"" << color << "\", fontcolor=\"" << color << "\"];\n";
+
+    // TODO usefull ?
+    // for (auto const root_index : fg.roots) {
+    // assert(is_nonterminal(fg.patterns[root_index.value].symbol));
+    // os << "    " << root_index.value << " [shape=cds];\n";
+    // }
+
+    os << std::endl;
+
+    auto print_transitions = [&](PatternBase const * pattern) {
+        for (auto const & transition : pattern->transitions) {
+            if (is_fake_pattern(transition.pattern)) {
+                os << "    \"" << pattern << "\" -> \"" << transition.pattern << "\" [label=\"";
+                tp(transition.terminal, os);
+                os << "\", color=red, fontcolor=red]\n";
+            } else {
+                os << "    \"" << pattern << "\" -> \"" << transition.pattern << "\":\""
+                   << transition.node_index << "\" [label=\"";
+                tp(transition.terminal, os);
+                os << " (" << transition.pop_count << ")"
+                   << "\", color=red, fontcolor=red]\n";
+            }
+        }
+    };
+
+    for (auto const & fake_pattern : fg.fake_patterns) {
+        os << "\n    \"" << fake_pattern.get()
+           << "\" [label=\"fake\", color=green, fontcolor=green];";
+        print_transitions(fake_pattern.get());
+
+        for (auto const & pattern : fake_pattern->patterns) {
+            os << "\n    \"" << fake_pattern.get() << "\" -> \"" << pattern.pattern << "\":\""
+               << pattern.node_index << "\" [color=green];";
+        }
+    }
+
+    for (auto pattern_index = 0u; pattern_index < fg.patterns.size(); ++pattern_index) {
+        auto const & pattern = fg.patterns[pattern_index];
+
+        if (is_terminal(pattern.symbol)) {
+            os << "\n    \"" << &pattern << "\" [label=\"";
+            tp(as_terminal(pattern.symbol), os);
+            os << "\"];\n";
+        } else {
+            os << "\n    \"" << &pattern << "\" [\n";
+            os << "        shape=rectangle\n"
+                  "        label=<\n"
+                  "          <table border='0' cellborder='0'>\n";
+            os << "            <tr>\n"
+                  "              <td port='head'>";
+            os << non_terminals_names.at(pattern_index) << " :</td>\n";
+
+            for (auto i = 0u; i < pattern.nodes.size(); ++i)
+                os << "              <td port='" << i << "'>" << pattern.nodes[i].count
+                   << "x</td>\n";
+
+            os << "            </tr>\n"
+                  "          </table>\n"
+                  "        >\n"
+                  "    ]\n";
+        }
+
+        for (auto i = 0u; i < pattern.nodes.size(); ++i) {
+            os << "    \"" << &pattern << "\":\"" << i << "\" -> \"" << pattern.nodes[i].pattern
+               << "\";\n";
+        }
+
+        print_transitions(&pattern);
+    }
+
+    os << "    }\n";
+}

@@ -11,6 +11,7 @@ struct GrammarNode;
 struct Symbol;
 struct NonTerminal;
 struct Terminal;
+struct Pattern;
 
 // ----------------------------------------------------------
 
@@ -40,6 +41,7 @@ struct NonTerminal final : public Symbol {
 
 struct Terminal final : public Symbol {
     void * payload = nullptr;
+    Pattern const * pattern = nullptr;  // for prediction
 
     Terminal();
 };
@@ -47,7 +49,7 @@ struct Terminal final : public Symbol {
 struct GrammarNode final : public GrammarBaseObject {
     GrammarBaseObject * next = nullptr;      // GrammarNode or nonterminal
     GrammarBaseObject * previous = nullptr;  // GrammarNode or nonterminal
-    Symbol * maps_to;
+    Symbol * maps_to = nullptr;
 
     GrammarNode() : GrammarBaseObject(1) {}
 };
