@@ -2,7 +2,13 @@
 
 #include <algorithm>
 #include <cassert>
+#include <fstream>   // TODO remove
 #include <iostream>  // TODO remove
+
+static auto log(std::string s) {
+    static auto log_output = std::ofstream { "log_output.txt" };
+    log_output << s << std::endl;
+}
 
 static auto getFirstTerminal(Symbol const * s) -> Terminal const * {
     while (is_nonterminal(s))
@@ -101,6 +107,7 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
     graph.terminals_index.reserve(g.terminals.size());
 
     for (auto i = 0u; i < g.terminals.size(); ++i) {
+        log("build terminal pattern");
         auto const terminal = g.terminals[i].get();
         auto const pattern = &graph.patterns[i];
         pattern->symbol = terminal;
@@ -110,6 +117,7 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
     }
 
     for (auto i = 0u; i < non_terminals.size(); ++i) {
+        log("build non terminal pattern");
         auto const index = i + g.terminals.size();
         auto & pattern = graph.patterns[index];
         pattern.symbol = non_terminals[i];
@@ -214,6 +222,7 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
 // ----------------------------------------------------------------
 
 static auto descend(Estimation & e) -> void {
+    log("descend");
     if (!is_fake_pattern(e.back().pattern)) {
         while (true) {
             auto const pattern = as_pattern(e.back().pattern);
@@ -231,6 +240,7 @@ static auto descend(Estimation & e) -> void {
 // ----------------------------------------------------------------
 
 auto init_estimation(Estimation * e, FlowGraph const * g) -> void {
+    log("init estimation");
     assert(e != nullptr);
     assert(g != nullptr);
     e->clear();
@@ -239,6 +249,7 @@ auto init_estimation(Estimation * e, FlowGraph const * g) -> void {
 // ----------------------------------------------------------------
 
 auto update_estimation(Estimation * e, Terminal const * t) -> void {
+    log("update estimation");
     assert(e != nullptr);
     assert(t != nullptr);
     assert(t->pattern != nullptr);
@@ -247,10 +258,12 @@ auto update_estimation(Estimation * e, Terminal const * t) -> void {
         for (auto const transition : e->back().pattern->transitions) {
             if (transition.terminal == t) {
                 if (transition.pop_count < e->size()) {
+                    log("forward");
                     e->resize(e->size() - transition.pop_count);
                     assert(e->back().pattern == transition.pattern);
                     e->back().node_index = transition.node_index;
                 } else {
+                    log("climb");
                     e->clear();
                     e->emplace_back(EstimationNode { transition.pattern, transition.node_index });
                 }
@@ -268,7 +281,10 @@ auto update_estimation(Estimation * e, Terminal const * t) -> void {
 
 // ----------------------------------------------------------------
 
-auto deinit_estimation(Estimation * e) -> void { e->clear(); }
+auto deinit_estimation(Estimation * e) -> void {
+    log("deinit estimation");
+    e->clear();
+}
 
 // ----------------------------------------------------------------
 // Prediction
@@ -296,6 +312,7 @@ static auto skip_false_prediction(Prediction * p) -> bool {
 }
 
 auto reset_prediction(Prediction * p, Estimation const * e) -> bool {
+    log("reset prediction");
     assert(p != nullptr);
     assert(e != nullptr);
 
@@ -309,18 +326,21 @@ auto reset_prediction(Prediction * p, Estimation const * e) -> bool {
 }
 
 auto copy_prediction(Prediction * to, Prediction const * from) -> void {
+    log("copy prediction");
     assert(to != nullptr);
     assert(from != nullptr);
     *to = *from;
 }
 
 auto get_prediction_tree_sibling(Prediction * p) -> bool {
+    log("get sibling");
     assert(p != nullptr);
     ++p->transition_index;
     return skip_false_prediction(p);
 }
 
 auto get_prediction_tree_child(Prediction * p) -> bool {
+    log("get child");
     assert(p != nullptr);
 
     auto const transition = p->estimation.back().pattern->transitions[p->transition_index];
