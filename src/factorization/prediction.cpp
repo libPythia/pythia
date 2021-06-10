@@ -16,6 +16,26 @@ template <typename... T> static auto log(T &&... args) {
     os << std::endl;
 }
 
+static auto operator<<(std::ostream & os, Estimation const & e) -> std::ostream & {
+    auto first = true;
+    os << '{';
+    for (auto const & n : e) {
+        if (first)
+            first = false;
+        else
+            os << ", ";
+        os << n.pattern;
+        if (!is_fake_pattern(n.pattern)) {
+            auto const symbol = as_pattern(n.pattern)->symbol;
+            if (is_terminal(symbol))
+                os << '[' << (char const *)as_terminal(symbol)->payload << ']';
+        }
+    }
+    os << '}';
+
+    return os;
+}
+
 static auto getFirstTerminal(Symbol const * s) -> Terminal const * {
     while (is_nonterminal(s))
         s = as_nonterminal(s)->first->maps_to;
@@ -113,17 +133,17 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
     graph.terminals_index.reserve(g.terminals.size());
 
     for (auto i = 0u; i < g.terminals.size(); ++i) {
-        log("build terminal pattern");
+        // log("build terminal pattern");
         auto const terminal = g.terminals[i].get();
         auto const pattern = &graph.patterns[i];
         pattern->symbol = terminal;
         patterns[pattern->symbol] = pattern;
-        assert(terminal->pattern == nullptr);
+        // assert(terminal->pattern == nullptr); // TODO
         terminal->pattern = pattern;
     }
 
     for (auto i = 0u; i < non_terminals.size(); ++i) {
-        log("build non terminal pattern");
+        // log("build non terminal pattern");
         auto const index = i + g.terminals.size();
         auto & pattern = graph.patterns[index];
         pattern.symbol = non_terminals[i];
@@ -149,7 +169,7 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
         exploreTransitions(&pattern.transitions, graph.fake_patterns, patterns, pattern.symbol, 1);
     }
 
-    log(graph.fake_patterns.size(), " fake patterns were built.");
+    // log(graph.fake_patterns.size(), " fake patterns were built.");
 
     for (auto i = 0u; i < graph.fake_patterns.size(); ++i) {
         if (i > 10) {
@@ -222,7 +242,6 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
 // ----------------------------------------------------------------
 
 static auto descend(Estimation & e) -> void {
-    log("descend");
     if (!is_fake_pattern(e.back().pattern)) {
         while (true) {
             auto const pattern = as_pattern(e.back().pattern);
@@ -230,6 +249,7 @@ static auto descend(Estimation & e) -> void {
             if (is_terminal(pattern->symbol))
                 break;
 
+            log("descend");
             e.emplace_back(EstimationNode { pattern->nodes[e.back().node_index].pattern, 0 });
         }
     }
@@ -240,7 +260,7 @@ static auto descend(Estimation & e) -> void {
 // ----------------------------------------------------------------
 
 auto init_estimation(Estimation * e, FlowGraph const * g) -> void {
-    log("init estimation");
+    // log("init estimation");
     assert(e != nullptr);
     assert(g != nullptr);
     e->clear();
@@ -249,7 +269,9 @@ auto init_estimation(Estimation * e, FlowGraph const * g) -> void {
 // ----------------------------------------------------------------
 
 auto update_estimation(Estimation * e, Terminal const * t) -> void {
-    log("update estimation : ", (char const *)t->payload);
+    log("update estimation : ",
+        (char const *)t->payload,
+        "-----------------------------------------------------");
     assert(e != nullptr);
     assert(t != nullptr);
     assert(t->pattern != nullptr);
@@ -270,20 +292,22 @@ auto update_estimation(Estimation * e, Terminal const * t) -> void {
                 descend(*e);
                 assert(as_pattern(e->back().pattern)->symbol == t);
                 assert(e->back().pattern == t->pattern);
+                log("update : ", *e);
                 return;
             }
         }
         e->clear();
     }
 
-    log("update init");
     e->emplace_back(EstimationNode { t->pattern, 0 });
+    log("update init : ", *e);
+    return;
 }
 
 // ----------------------------------------------------------------
 
 auto deinit_estimation(Estimation * e) -> void {
-    log("deinit estimation");
+    // log("deinit estimation");
     e->clear();
 }
 
@@ -296,17 +320,29 @@ static auto skip_false_prediction(Prediction * p) -> bool {
     while (true) {
         auto const & transitions = p->estimation.back().pattern->transitions;
 
-        if (p->transition_index >= transitions.size())
+        if (p->transition_index >= transitions.size()) {
+            log("end of predictions");
             return false;
+        }
 
         auto const & transition = transitions[p->transition_index];
+        log("Inspect transition : ", transition.pop_count, " -> ", transition.pattern);
 
-        if (p->estimation.size() <= transition.pop_count)
+        if (p->estimation.size() <= transition.pop_count) {
+            log("possible climbing");
             return true;
+        }
 
-        if (p->estimation[p->estimation.size() - transition.pop_count].pattern ==
-            transition.pattern)
-            return true;  // TODO Bug ?
+        auto const pattern_index = p->estimation.size() - transition.pop_count - 1;
+        if (p->estimation[pattern_index].pattern == transition.pattern) {
+            auto const node_index = p->estimation[pattern_index].node_index;
+            if (transition.node_index == node_index || transition.node_index == node_index + 1) {
+                log("possible transition");
+                return true;  // TODO Bug ?
+            }
+        }
+
+        log("skip transition");
 
         ++p->transition_index;
     }
@@ -327,40 +363,43 @@ auto reset_prediction(Prediction * p, Estimation const * e) -> bool {
 }
 
 auto copy_prediction(Prediction * to, Prediction const * from) -> void {
-    log("copy prediction");
+    log("copy prediction : ", from->estimation);
     assert(to != nullptr);
     assert(from != nullptr);
     *to = *from;
 }
 
 auto get_prediction_tree_sibling(Prediction * p) -> bool {
-    log("get sibling");
     assert(p != nullptr);
     ++p->transition_index;
+    log("get sibling : ", p->estimation);
     return skip_false_prediction(p);
 }
 
 auto get_prediction_tree_child(Prediction * p) -> bool {
-    log("get child");
     assert(p != nullptr);
 
     auto const transition = p->estimation.back().pattern->transitions[p->transition_index];
     if (is_fake_pattern(transition.pattern)) {
         assert(false);  // TODO
     } else {
-        log("prediciton climb");
-        if (p->estimation.size() > transition.pop_count) {
+        if (transition.pop_count < p->estimation.size()) {
+            log("get child : prediction forward");
             p->estimation.resize(p->estimation.size() - transition.pop_count);
             assert(p->estimation.back().pattern == transition.pattern);
+            // assert(p->estimation.back().node_index == transition.node_index ||
+            //        p->estimation.back().node_index == transition.node_index + 1); // TODO
             p->estimation.back().node_index = transition.node_index;
         } else {
-            log("prediciton forward");
+            log("get child : prediction climb");
             p->estimation.clear();
             p->estimation.emplace_back(
                     EstimationNode { transition.pattern, transition.node_index });
         }
         descend(p->estimation);
-        return false;  // TODO
+        p->transition_index = 0u;
+        log("get child : ", p->estimation);
+        return skip_false_prediction(p);
     }
 }
 

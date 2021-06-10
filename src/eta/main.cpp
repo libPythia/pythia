@@ -20,9 +20,15 @@ static auto print_tree(std::ostream & os,
                        Symbol const * symbol,
                        terminal_printer const & printer,
                        size_t indent) -> void {
+    static auto simple_leaf = false;
     if (is_terminal(symbol)) {
         os << '"';
+        if (indent <= 1)
+            set_color(os, eta::color_t::red);
+        else
+            set_color(os, eta::color_t::blue);
         printer(as_terminal(symbol), os);
+        set_color(os, eta::color_t::standard);
         os << '"';
     } else {
         auto const nonterminal = as_nonterminal(symbol);
@@ -31,7 +37,9 @@ static auto print_tree(std::ostream & os,
             os << std::endl;
             for (auto i = 0; i < indent; ++i)
                 os << "    ";
+            set_color(os, eta::color_t::cyan);
             os << "- " << node->repeats << "x ";
+            set_color(os, eta::color_t::standard);
             print_tree(os, node->maps_to, printer, indent + 1);
 
             if (!is_node(node->next))
