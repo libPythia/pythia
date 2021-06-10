@@ -45,8 +45,12 @@ static auto print_help() -> void {
     eta::print_option('g', "grammar", "Format output as a grammar.");
     eta::print_option('B', "binary-output", "Use binary format for output");
     eta::print_option('e', "expend", "Print original input");
-    eta::print_option('t', "terminals", "Print used terminals");
+    eta::print_option('t', "tree", "Produce output as tree");
+    eta::print_option('T', "terminals", "Print used terminals");
     eta::print_option(0, "no-color", "Don't use color and formating in output.");
+#ifdef ETA_GUI_ENABLED
+    eta::print_option(0, "gui", "Display result in interactive window.");
+#endif
 
     std::cerr << '\n';
     eta::print_section("ERRORS");
@@ -89,7 +93,11 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     auto & binary_output_opt = parser["binary-output"].abbreviation('B');
     auto & no_color_opt = parser["no-color"];
     auto & expend_opt = parser["expend"].abbreviation('e');
-    auto & terminals_opt = parser["terminals"].abbreviation('t');
+    auto & tree_opt = parser["tree"].abbreviation('t');
+    auto & terminals_opt = parser["terminals"].abbreviation('T');
+#ifdef ETA_GUI_ENABLED
+    auto & gui_opt = parser["gui"];
+#endif
 
     if (!parser(argc, argv)) {
         exit(errors_t::BAD_ARGUMENTS);
@@ -118,7 +126,13 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     auto const grammar = grammar_opt.was_set();
     auto const binary_output = binary_output_opt.was_set();
     auto const expend = expend_opt.was_set();
+    auto const tree = tree_opt.was_set();
     auto const terminals = terminals_opt.was_set();
+#ifdef ETA_GUI_ENABLED
+    auto const gui = gui_opt.was_set();
+#else
+    auto constexpr gui = false;
+#endif
 
     // general settings
     settings.debug = debug;
@@ -136,8 +150,8 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
         set_color(std::cerr, eta::color_t::red);
         std::cerr << "error: ";
         set_color(std::cerr, eta::color_t::standard);
-        std::cerr << "--non-printable, --lines, --logs and --binary-input are mutually "
-                     "exclusive.\n\n";
+        std::cerr << "--non-printable, --lines, --logs"
+                     " and --binary-input are mutually exclusive.\n\n";
         print_help();
         exit(errors_t::BAD_ARGUMENTS);
     }
@@ -175,19 +189,25 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
 
     // output settings
 
-    if (count_bools(dot, flow, grammar, expend, binary_output, terminals) > 1) {
+    if (count_bools(dot, flow, grammar, expend, binary_output, terminals, tree, gui) > 1) {
         set_color(std::cerr, eta::color_t::red);
         std::cerr << "error: ";
         set_color(std::cerr, eta::color_t::standard);
-        std::cerr << "--dot, --flow, --expend, --grammar, --terminals and --binary-output are "
-                     "mutually "
-                     "exclusive.\n\n";
+        std::cerr << "--dot, --flow, --expend, --grammar, --tree, --terminals"
+#ifdef ETA_GUI_ENABLED
+                     ", --gui"
+#endif
+                     "and --binary-output are mutually exclusive.\n\n";
         print_help();
         exit(errors_t::BAD_ARGUMENTS);
     }
 
     if (dot)
         settings.output_mode = output_t::dot;
+#ifdef ETA_GUI_ENABLED
+    else if (gui)
+        settings.output_mode = output_t::gui;
+#endif
     else if (flow)
         settings.output_mode = output_t::flow;
     else if (grammar)
@@ -196,6 +216,8 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
         settings.output_mode = output_t::binary;
     else if (expend)
         settings.output_mode = output_t::expend;
+    else if (tree)
+        settings.output_mode = output_t::tree;
     else if (terminals)
         settings.output_mode = output_t::terminals;
     else

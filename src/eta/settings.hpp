@@ -25,6 +25,10 @@ enum class output_t {
     binary,
     expend,
     terminals,
+    tree,
+#ifdef ETA_GUI_ENABLED
+    gui,
+#endif
 };
 
 struct settings_t final {

@@ -13,6 +13,10 @@ thread_dep = dependency('threads')
 
 eta_core = subproject('eta_core').get_variable('eta_core_dep')
 
+glfw = dependency('glfw3', required:false)
+glew = dependency('glew', required:false)
+build_gui = glfw.found() and glew.found()
+
 #----------------------------------------------------------------
 
 eta_factorizer_src = [
@@ -50,6 +54,31 @@ eta_factorizer_exaustive_test = executable('exaustive_test',
 
 #----------------------------------------------------------------
 
+if (build_gui)
+    eta_gui_srcs = [
+        'src/eta/gui/eta_gui.cpp',
+        'src/eta/gui/imgui.cpp',
+        'src/eta/gui/imgui_demo.cpp',
+        'src/eta/gui/imgui_draw.cpp',
+        'src/eta/gui/imgui_impl_glfw.cpp',
+        'src/eta/gui/imgui_impl_opengl3.cpp',
+        'src/eta/gui/imgui_tables.cpp',
+        'src/eta/gui/imgui_widgets.cpp'
+    ]
+
+    eta_gui_lib = static_library('eta_reduce_gui',
+        eta_gui_srcs,
+        dependencies: [glfw, glew],
+        install:false)
+
+    eta_gui_dep = declare_dependency(
+        link_with:eta_gui_lib,
+        include_directories:'src/eta/gui',
+        compile_args:'-DETA_GUI_ENABLED')
+endif
+
+#----------------------------------------------------------------
+
 eta_exe_src = [
   'src/eta/compare.cpp',
   'src/eta/input.cpp',
@@ -59,11 +88,16 @@ eta_exe_src = [
 
 eta_exe_deps = [eta_factorizer_dep, utils_dep, eta_core]
 
+if (build_gui)
+    eta_exe_deps += eta_gui_dep
+endif
+
 eta_exe = executable('eta_reduce',
   eta_exe_src,
   dependencies:eta_exe_deps,
   install_rpath:get_option('prefix')/get_option('libdir'),
   install:true)
+
 #----------------------------------------------------------------
 
 # pkgconfig export
