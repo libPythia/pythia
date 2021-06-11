@@ -64,6 +64,7 @@ static auto addTransition(std::vector<Transition> * out,
                           size_t pop_count) -> void {
     auto const first_terminal = getFirstTerminal(node->maps_to);
     auto const node_index = getNodeIndex(node);
+    log("add transition");
 
     auto transition = [&]() -> Transition * {
         for (auto & transition : *out) {
@@ -75,10 +76,12 @@ static auto addTransition(std::vector<Transition> * out,
     }();
 
     if (transition == nullptr) {
+        log("Create a new transition");
         out->push_back(Transition { first_terminal, pattern, node_index, pop_count });
     } else {
         auto const fake_pattern = [&]() {
             if (is_fake_pattern(transition->pattern)) {
+                log("Reuse transition in fake pattern");
                 return as_fake_pattern(transition->pattern);
             } else {
                 log("Add fake pattern");
@@ -133,7 +136,7 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
     graph.terminals_index.reserve(g.terminals.size());
 
     for (auto i = 0u; i < g.terminals.size(); ++i) {
-        // log("build terminal pattern");
+        log("build terminal pattern");
         auto const terminal = g.terminals[i].get();
         auto const pattern = &graph.patterns[i];
         pattern->symbol = terminal;
@@ -143,7 +146,7 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
     }
 
     for (auto i = 0u; i < non_terminals.size(); ++i) {
-        // log("build non terminal pattern");
+        log("build non terminal pattern");
         auto const index = i + g.terminals.size();
         auto & pattern = graph.patterns[index];
         pattern.symbol = non_terminals[i];
@@ -169,18 +172,21 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
         exploreTransitions(&pattern.transitions, graph.fake_patterns, patterns, pattern.symbol, 1);
     }
 
-    // log(graph.fake_patterns.size(), " fake patterns were built.");
+    log(graph.fake_patterns.size(),
+        " fake patterns were built. Compute transitions after fake patterns");
 
     for (auto i = 0u; i < graph.fake_patterns.size(); ++i) {
         if (i > 10) {
             log("ERROR recursivity");
             break;
         }
+        log("compute transitions of fake pattern");
         auto const fake_pattern = graph.fake_patterns[i].get();
         for (auto const & node : fake_pattern->patterns) {
             auto const pattern = as_pattern(node.pattern);
             auto const & current_node = pattern->nodes[node.node_index];
             if (current_node.node->repeats > 1) {
+                log("Add loop transition");
                 addTransition(&fake_pattern->transitions,
                               graph.fake_patterns,
                               pattern,
@@ -190,12 +196,14 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
 
             auto const next_node_index = node.node_index + 1;
             if (next_node_index < pattern->nodes.size()) {
+                log("Add transition to next node in pattern");
                 addTransition(&fake_pattern->transitions,
                               graph.fake_patterns,
                               node.pattern,
-                              current_node.node,
+                              pattern->nodes[next_node_index].node,
                               1);  // TODO
             } else {
+                log("Explore transitions after pattern end");
                 exploreTransitions(&fake_pattern->transitions,
                                    graph.fake_patterns,
                                    patterns,
@@ -209,11 +217,11 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
 
     auto const is_transition_valid = [](Transition const & transition) -> bool {
         if (is_fake_pattern(transition.pattern)) {
-            assert(false);  // TODO
-            // for (auto const pattern : as_fake_pattern(transition.pattern)->patterns)
-            //     if (getFirstTerminal(pattern.pattern->nodes[transition.node_index].symbol) !=
-            //         transition.terminal)
-            //         return false;
+            for (auto const [pattern, node_index] : as_fake_pattern(transition.pattern)->patterns) {
+                auto const node = as_pattern(pattern)->nodes[node_index].node;
+                if (getFirstTerminal(node->maps_to) != transition.terminal)
+                    return false;
+            }
             return true;
         } else {
             auto const pattern =

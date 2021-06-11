@@ -23,7 +23,9 @@ Terminal::Terminal() : Symbol(terminal_repeats_value) {}
 
 // ----------------------------------------------------------
 
-auto is_nonterminal(GrammarBaseObject const * n) -> bool { return n->repeats == nonterminal_repeats_value; }
+auto is_nonterminal(GrammarBaseObject const * n) -> bool {
+    return n->repeats == nonterminal_repeats_value;
+}
 auto as_nonterminal(GrammarBaseObject * n) -> NonTerminal * {
     assert(is_nonterminal(n));
     return reinterpret_cast<NonTerminal *>(n);
@@ -33,7 +35,9 @@ auto as_nonterminal(GrammarBaseObject const * n) -> NonTerminal const * {
     return reinterpret_cast<NonTerminal const *>(n);
 }
 
-auto is_terminal(GrammarBaseObject const * n) -> bool { return n->repeats == terminal_repeats_value; }
+auto is_terminal(GrammarBaseObject const * n) -> bool {
+    return n->repeats == terminal_repeats_value;
+}
 auto as_terminal(GrammarBaseObject * n) -> Terminal * {
     assert(is_terminal(n));
     return reinterpret_cast<Terminal *>(n);
@@ -182,8 +186,10 @@ static auto remove_occurrence(Symbol * rule, GrammarNode * parent, Symbol * next
     }
 }
 
-static auto replace_occurrence(Symbol * rule, GrammarNode * parent, Symbol * old_next, Symbol * new_next)
-        -> void {
+static auto replace_occurrence(Symbol * rule,
+                               GrammarNode * parent,
+                               Symbol * old_next,
+                               Symbol * new_next) -> void {
     remove_occurrence(rule, parent, old_next);
     add_occurrence(rule, parent, new_next);
 }

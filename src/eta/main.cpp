@@ -16,14 +16,17 @@
 
 auto compare(Grammar & g, std::string const & str, terminal_printer const & printer) -> void;
 
-static auto print_tree(std::ostream & os,
-                       Symbol const * symbol,
-                       terminal_printer const & printer,
-                       size_t indent) -> void {
+static auto print_tree(
+        std::ostream & os,
+        Symbol const * symbol,
+        terminal_printer const & printer,
+        size_t indent,
+        std::unordered_map<NonTerminal const *, std::string> const & non_terminal_names) -> void {
     static auto simple_leaf = false;
+    auto const temporal_checkpoint = indent <= 1 && occurrences_count(symbol) == 1;
     if (is_terminal(symbol)) {
         os << '"';
-        if (indent <= 1)
+        if (temporal_checkpoint)
             set_color(os, eta::color_t::red);
         else
             set_color(os, eta::color_t::blue);
@@ -31,16 +34,29 @@ static auto print_tree(std::ostream & os,
         set_color(os, eta::color_t::standard);
         os << '"';
     } else {
+        if (temporal_checkpoint) {
+            set_color(os, eta::color_t::red);
+            set_style(os, eta::style_t::bold);
+            os << "* ";
+            set_style(os, eta::style_t::standard);
+            set_color(os, eta::color_t::standard);
+        }
         auto const nonterminal = as_nonterminal(symbol);
+        set_color(os, eta::color_t::green);
+        os << non_terminal_names.at(nonterminal);
+        set_color(os, eta::color_t::standard);
         auto node = nonterminal->first;
         while (true) {
             os << std::endl;
             for (auto i = 0; i < indent; ++i)
                 os << "    ";
             set_color(os, eta::color_t::cyan);
-            os << "- " << node->repeats << "x ";
+
+            os << "- ";
+            if (node->repeats > 1)
+                os << node->repeats << "x ";
             set_color(os, eta::color_t::standard);
-            print_tree(os, node->maps_to, printer, indent + 1);
+            print_tree(os, node->maps_to, printer, indent + 1, non_terminal_names);
 
             if (!is_node(node->next))
                 break;
@@ -116,8 +132,9 @@ auto main(int argc, char ** argv) -> int {
             }
             break;
         case output_t::tree: {
+            auto const non_terminal_names = build_non_terminal_names(input.grammar);
             for (auto const & root : input.threads)
-                print_tree(std::cout, as_symbol(root), print_terminal, 0);
+                print_tree(std::cout, as_symbol(root), print_terminal, 0, non_terminal_names);
             std::cout << std::endl;
         } break;
         case output_t::terminals:
