@@ -314,10 +314,18 @@ auto init_estimation(Estimation * e, FlowGraph const * g) -> void {
 // ----------------------------------------------------------------
 
 auto update_estimation(Estimation * e, Terminal const * t) -> void {
+    assert(e != nullptr);
+
+    if (t == nullptr) {
+        log("update estimation : unknown event");
+        e->clear();
+        return;
+    }
+
     log("update estimation : ",
         (char const *)t->payload,
         "-----------------------------------------------------");
-    assert(e != nullptr);
+
     assert(t != nullptr);
     assert(t->pattern != nullptr);
 
