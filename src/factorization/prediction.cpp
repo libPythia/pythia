@@ -383,7 +383,7 @@ static auto skip_false_prediction(Prediction * p) -> bool {
             auto const node_index = p->estimation[pattern_index].node_index;
             if (transition.node_index == node_index || transition.node_index == node_index + 1) {
                 log("possible transition");
-                return true;  // TODO Bug ?
+                return true;
             }
         }
 
@@ -461,6 +461,17 @@ auto get_terminal(Prediction const * p) -> Terminal const * {
 }
 
 auto get_count(Prediction const * p) -> size_t {
-    // return p->estimation.back().pattern->transitions[p->transition_index].
-    return 1;
+    return p->estimation.back().pattern->transitions[p->transition_index].ocurence_count;
 }
+
+auto get_probability(Prediction const * p) -> double {
+    auto count = size_t(0u);
+
+    for (auto const & transition : p->estimation.back().pattern->transitions)
+        count += transition.ocurence_count;
+
+    auto const proba = static_cast<double>(get_count(p)) / static_cast<double>(count);
+    // assert(proba >= 0. && proba <= 1.);
+    return proba;
+}
+

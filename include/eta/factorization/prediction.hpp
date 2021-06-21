@@ -90,6 +90,7 @@ auto get_prediction_tree_child(Prediction * p) -> bool;    // parents = parents-
 auto get_prediction_tree_sibling(Prediction * p) -> bool;  // parents = parents->next puis next
 auto get_terminal(Prediction const * p) -> Terminal const *;
 auto get_count(Prediction const * p) -> size_t;
+auto get_probability(Prediction const * p) -> double;
 
 // -----------------------------------------------------------
 

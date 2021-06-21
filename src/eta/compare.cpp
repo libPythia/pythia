@@ -57,7 +57,6 @@ auto compare(Grammar & g, std::string const & str, terminal_printer const & prin
     init_estimation(&e, &fg);
     // init_prediction(&p);
     // init_prediction(&p2);
-    // assert(e.parents == nullptr);  // TODO temporaire
 
     for (auto const & it : trace) {
         update_estimation(&e, it.first);
@@ -71,17 +70,19 @@ auto compare(Grammar & g, std::string const & str, terminal_printer const & prin
                 } else
                     std::cout << ", ";
                 print_symbol(get_terminal(&p), printer);
+                std::cout << ' ' << static_cast<int>(get_probability(&p) * 100.) << '%';
                 copy_prediction(&p2, &p);
                 if (get_prediction_tree_child(&p2)) {
                     auto first2 = true;
                     do {
                         if (first2) {
                             first2 = false;
-                            std::cout << '(';
+                            std::cout << " (";
                         } else {
                             std::cout << ", ";
                         }
                         print_symbol(get_terminal(&p2), printer);
+                        std::cout << ' ' << static_cast<int>(get_probability(&p) * 100.) << '%';
                     } while (get_prediction_tree_sibling(&p2));
                     std::cout << ')';
                 }
@@ -95,6 +96,6 @@ auto compare(Grammar & g, std::string const & str, terminal_printer const & prin
     // deinit_prediction(&p);
     // deinit_estimation(&e);
 
-    eta::set_color(std::cout, eta::color_t::standard);  // TODO after the loop ?
-    eta::set_style(std::cout, eta::style_t::standard);  // TODO after the loop ?
+    eta::set_color(std::cout, eta::color_t::standard);
+    eta::set_style(std::cout, eta::style_t::standard);
 }
