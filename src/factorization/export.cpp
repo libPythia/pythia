@@ -306,13 +306,15 @@ auto print_flow_graph(FlowGraph const & fg, std::ostream & os, terminal_printer 
             if (is_fake_pattern(transition.pattern)) {
                 os << "    \"" << pattern << "\" -> \"" << transition.pattern << "\" [label=\"";
                 tp(transition.terminal, os);
+                os << ' ' << transition.ocurence_count;
                 os << "\", color=red, fontcolor=red]\n";
             } else {
                 os << "    \"" << pattern << "\" -> \"" << transition.pattern << "\":\""
                    << transition.node_index << "\" [label=\"";
                 tp(transition.terminal, os);
-                os << " (" << transition.pop_count << ")"
-                   << "\", color=red, fontcolor=red]\n";
+                os << ' ' << transition.ocurence_count;
+                // os << " (" << transition.pop_count << ")"; TODO
+                os << "\", color=red, fontcolor=red]\n";
             }
         }
     };
