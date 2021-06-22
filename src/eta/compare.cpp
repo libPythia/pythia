@@ -82,7 +82,7 @@ auto compare(Grammar & g, std::string const & str, terminal_printer const & prin
                             std::cout << ", ";
                         }
                         print_symbol(get_terminal(&p2), printer);
-                        std::cout << ' ' << static_cast<int>(get_probability(&p) * 100.) << '%';
+                        std::cout << ' ' << static_cast<int>(get_probability(&p2) * 100.) << '%';
                     } while (get_prediction_tree_sibling(&p2));
                     std::cout << ')';
                 }
