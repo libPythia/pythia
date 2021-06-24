@@ -313,7 +313,7 @@ auto print_flow_graph(FlowGraph const & fg, std::ostream & os, terminal_printer 
                    << transition.node_index << "\" [label=\"";
                 tp(transition.terminal, os);
                 os << ' ' << transition.ocurence_count;
-                // os << " (" << transition.pop_count << ")"; TODO
+                os << " (" << transition.pop_count << " -> " << transition.node_index << ')';
                 os << "\", color=red, fontcolor=red]\n";
             }
         }

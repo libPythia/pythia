@@ -29,6 +29,7 @@ static auto operator<<(std::ostream & os, Estimation const & e) -> std::ostream 
             auto const symbol = as_pattern(n.pattern)->symbol;
             if (is_terminal(symbol))
                 os << '[' << (char const *)as_terminal(symbol)->payload << ']';
+            os << 'x' << n.repeat;
         }
     }
     os << '}';
@@ -77,7 +78,6 @@ static auto addTransition(std::vector<Transition> * out,
                           size_t ocurrences_count) -> void {
     auto const first_terminal = getFirstTerminal(node->maps_to);
     auto const node_index = getNodeIndex(node);
-    log("add transition");
 
     auto transition = [&]() -> Transition * {
         for (auto & transition : *out) {
@@ -89,16 +89,13 @@ static auto addTransition(std::vector<Transition> * out,
     }();
 
     if (transition == nullptr) {
-        log("Create a new transition");
         out->push_back(
                 Transition { first_terminal, pattern, node_index, pop_count, ocurrences_count });
     } else {
         auto const fake_pattern = [&]() {
             if (is_fake_pattern(transition->pattern)) {
-                log("Reuse transition in fake pattern");
                 return as_fake_pattern(transition->pattern);
             } else {
-                log("Add fake pattern");
                 fake_patterns.push_back(std::make_unique<FakePattern>());
                 auto const ptr = fake_patterns.back().get();
                 ptr->patterns.push_back(FakePatternOccurence { as_pattern(transition->pattern),
@@ -164,7 +161,6 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
     graph.terminals_index.reserve(g.terminals.size());
 
     for (auto i = 0u; i < g.terminals.size(); ++i) {
-        log("build terminal pattern");
         auto const terminal = g.terminals[i].get();
         auto const pattern = &graph.patterns[i];
         pattern->symbol = terminal;
@@ -174,7 +170,6 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
     }
 
     for (auto i = 0u; i < non_terminals.size(); ++i) {
-        log("build non terminal pattern");
         auto const index = i + g.terminals.size();
         auto & pattern = graph.patterns[index];
         pattern.symbol = non_terminals[i];
@@ -200,22 +195,13 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
         exploreTransitions(&pattern.transitions, graph.fake_patterns, patterns, pattern.symbol, 1);
     }
 
-    log(graph.fake_patterns.size(),
-        " fake patterns were built. Compute transitions after fake patterns");
-
     for (auto i = 0u; i < graph.fake_patterns.size(); ++i) {
-        if (i > 10) {
-            log("ERROR recursivity");
-            break;
-        }
-        log("compute transitions of fake pattern");
         auto const fake_pattern = graph.fake_patterns[i].get();
         for (auto const & node : fake_pattern->patterns) {
             auto const pattern = as_pattern(node.pattern);
             auto const & current_node = pattern->nodes[node.node_index];
             auto const ocurrences_count = getOcurenceCount(current_node.node);
             if (current_node.node->repeats > 1) {
-                log("Add loop transition");
                 addTransition(&fake_pattern->transitions,
                               graph.fake_patterns,
                               pattern,
@@ -226,7 +212,6 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
 
             auto const next_node_index = node.node_index + 1;
             if (next_node_index < pattern->nodes.size()) {
-                log("Add transition to next node in pattern");
                 addTransition(&fake_pattern->transitions,
                               graph.fake_patterns,
                               node.pattern,
@@ -234,7 +219,6 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
                               1,  // TODO
                               ocurrences_count);
             } else {
-                log("Explore transitions after pattern end");
                 exploreTransitions(&fake_pattern->transitions,
                                    graph.fake_patterns,
                                    patterns,
@@ -249,16 +233,15 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
     auto const is_transition_valid = [](Transition const & transition) -> bool {
         if (is_fake_pattern(transition.pattern)) {
             auto const fake_pattern = as_fake_pattern(transition.pattern);
-            if (fake_pattern->patterns.size() < 2) {
-                log("ERROR too many nodes represented by a fake pattern");
-            }
+            if (fake_pattern->patterns.size() < 2)
+                return false;
+
             for (auto const [pattern, node_index] : fake_pattern->patterns) {
                 auto const node = as_pattern(pattern)->nodes[node_index].node;
-                if (getFirstTerminal(node->maps_to) != transition.terminal) {
-                    log("Wrong transition over fake node");
+                if (getFirstTerminal(node->maps_to) != transition.terminal)
                     return false;
-                }
             }
+
             return true;
         } else {
             auto const pattern =
@@ -294,8 +277,7 @@ static auto descend(Estimation & e) -> void {
             if (is_terminal(pattern->symbol))
                 break;
 
-            log("descend");
-            e.emplace_back(EstimationNode { pattern->nodes[e.back().node_index].pattern, 0 });
+            e.emplace_back(EstimationNode { pattern->nodes[e.back().node_index].pattern, 0, 1 });
         }
     }
 }
@@ -305,7 +287,6 @@ static auto descend(Estimation & e) -> void {
 // ----------------------------------------------------------------
 
 auto init_estimation(Estimation * e, FlowGraph const * g) -> void {
-    // log("init estimation");
     assert(e != nullptr);
     assert(g != nullptr);
     e->clear();
@@ -313,56 +294,68 @@ auto init_estimation(Estimation * e, FlowGraph const * g) -> void {
 
 // ----------------------------------------------------------------
 
-auto update_estimation(Estimation * e, Terminal const * t) -> void {
-    assert(e != nullptr);
+auto update_estimation(Estimation * estimation, Terminal const * terminal) -> void {
+    assert(estimation != nullptr);
 
-    if (t == nullptr) {
-        log("update estimation : unknown event");
-        e->clear();
+    if (terminal == nullptr) {
+        estimation->clear();
         return;
     }
 
     log("update estimation : ",
-        (char const *)t->payload,
+        (char const *)terminal->payload,
         "-----------------------------------------------------");
 
-    assert(t != nullptr);
-    assert(t->pattern != nullptr);
+    assert(terminal != nullptr);
+    assert(terminal->pattern != nullptr);
 
-    if (e->size() > 0) {
-        for (auto const transition : e->back().pattern->transitions) {
-            if (transition.terminal == t) {
-                if (transition.pop_count < e->size()) {
-                    log("update forward");
-                    e->resize(e->size() - transition.pop_count);
-                    assert(e->back().pattern == transition.pattern);
-                    e->back().node_index = transition.node_index;
+    if (estimation->size() > 0) {
+        for (auto const transition : estimation->back().pattern->transitions) {
+            if (transition.terminal == terminal) {
+                if (transition.pop_count < estimation->size()) {
+                    estimation->resize(estimation->size() - transition.pop_count);
+                    assert(estimation->back().pattern == transition.pattern);
+                    if (estimation->back().node_index == transition.node_index) {
+                        assert(estimation->back().repeat > 0);
+
+                        ++estimation->back().repeat;
+
+                        // Detect too much loop iterations
+                        auto const node = as_pattern(estimation->back().pattern)
+                                                  ->nodes[estimation->back().node_index];
+                        if (estimation->back().repeat == node.count) {
+                            break;
+                        }
+                    } else {
+                        estimation->back().node_index = transition.node_index;
+                        estimation->back().repeat = 1;
+                    }
                 } else {
-                    log("update climb");
-                    e->clear();
-                    e->emplace_back(EstimationNode { transition.pattern, transition.node_index });
+                    auto const repeat =
+                            (as_pattern(transition.pattern)->nodes[transition.node_index].pattern ==
+                             estimation->front().pattern)
+                                    ? size_t(2)
+                                    : size_t(1);
+                    estimation->clear();
+                    estimation->emplace_back(
+                            EstimationNode { transition.pattern, transition.node_index, repeat });
                 }
-                descend(*e);
-                assert(as_pattern(e->back().pattern)->symbol == t);
-                assert(e->back().pattern == t->pattern);
-                log("update : ", *e);
+                descend(*estimation);
+                assert(as_pattern(estimation->back().pattern)->symbol == terminal);
+                assert(estimation->back().pattern == terminal->pattern);
                 return;
             }
         }
-        e->clear();
+        estimation->clear();
     }
 
-    e->emplace_back(EstimationNode { t->pattern, 0 });
-    log("update init : ", *e);
+    estimation->emplace_back(EstimationNode { terminal->pattern, 0, 1 });
     return;
 }
 
 // ----------------------------------------------------------------
 
-auto deinit_estimation(Estimation * e) -> void {
-    // log("deinit estimation");
-    e->clear();
-}
+auto deinit_estimation(Estimation * e) -> void { e->clear(); }
 
 // ----------------------------------------------------------------
 // Prediction
@@ -374,15 +367,12 @@ static auto skip_false_prediction(Prediction * p) -> bool {
         auto const & transitions = p->estimation.back().pattern->transitions;
 
         if (p->transition_index >= transitions.size()) {
-            log("end of predictions");
             return false;
         }
 
         auto const & transition = transitions[p->transition_index];
-        log("Inspect transition : ", transition.pop_count, " -> ", transition.pattern);
 
         if (p->estimation.size() <= transition.pop_count) {
-            log("possible climbing");
             return true;
         }
 
@@ -390,19 +380,15 @@ static auto skip_false_prediction(Prediction * p) -> bool {
         if (p->estimation[pattern_index].pattern == transition.pattern) {
             auto const node_index = p->estimation[pattern_index].node_index;
             if (transition.node_index == node_index || transition.node_index == node_index + 1) {
-                log("possible transition");
                 return true;
             }
         }
-
-        log("skip transition");
 
         ++p->transition_index;
     }
 }
 
 auto reset_prediction(Prediction * p, Estimation const * e) -> bool {
-    log("reset prediction");
     assert(p != nullptr);
     assert(e != nullptr);
 
@@ -416,7 +402,6 @@ auto reset_prediction(Prediction * p, Estimation const * e) -> bool {
 }
 
 auto copy_prediction(Prediction * to, Prediction const * from) -> void {
-    log("copy prediction : ", from->estimation);
     assert(to != nullptr);
     assert(from != nullptr);
     *to = *from;
@@ -425,7 +410,6 @@ auto copy_prediction(Prediction * to, Prediction const * from) -> void {
 auto get_prediction_tree_sibling(Prediction * p) -> bool {
     assert(p != nullptr);
     ++p->transition_index;
-    log("get sibling : ", p->estimation);
     return skip_false_prediction(p);
 }
 
@@ -437,48 +421,79 @@ auto get_prediction_tree_child(Prediction * p) -> bool {
         assert(false);  // TODO
     } else {
         if (transition.pop_count < p->estimation.size()) {
-            log("get child : prediction forward");
             p->estimation.resize(p->estimation.size() - transition.pop_count);
             assert(p->estimation.back().pattern == transition.pattern);
-            // assert(p->estimation.back().node_index == transition.node_index ||
-            //        p->estimation.back().node_index == transition.node_index + 1); // TODO
-            p->estimation.back().node_index = transition.node_index;
+            if (p->estimation.back().node_index == transition.node_index)
+                ++p->estimation.back().repeat;
+            else {
+                p->estimation.back().node_index = transition.node_index;
+                p->estimation.back().repeat = 1;
+            }
         } else {
-            log("get child : prediction climb");
+            auto const repeat =
+                    (as_pattern(transition.pattern)->nodes[transition.node_index].pattern ==
+                     p->estimation.front().pattern)
+                            ? size_t(2)
+                            : size_t(1);
             p->estimation.clear();
             p->estimation.emplace_back(
-                    EstimationNode { transition.pattern, transition.node_index });
+                    EstimationNode { transition.pattern, transition.node_index, repeat });
         }
         descend(p->estimation);
         p->transition_index = 0u;
-        log("get child : ", p->estimation);
         return skip_false_prediction(p);
     }
 }
 
-auto get_terminal(Prediction const * p) -> Terminal const * {
+static auto get_current_transition(Prediction const * p) -> Transition const * {
     assert(p != nullptr);
     assert(p->estimation.size() > 0);
     assert(p->estimation.back().pattern != nullptr);
     assert(p->estimation.back().pattern->transitions.size() > p->transition_index);
-    log("get terminal ",
-        (char const *)p->estimation.back()
-                .pattern->transitions[p->transition_index]
-                .terminal->payload);
-    return p->estimation.back().pattern->transitions[p->transition_index].terminal;
+    return &p->estimation.back().pattern->transitions[p->transition_index];
 }
 
-auto get_count(Prediction const * p) -> size_t {
-    return p->estimation.back().pattern->transitions[p->transition_index].ocurence_count;
+auto get_terminal(Prediction const * p) -> Terminal const * {
+    auto const transition = get_current_transition(p);
+    return transition->terminal;
+}
+
+static auto compute_transition_occurence_count(Prediction const * p, size_t const index) -> size_t {
+    auto const & transition = p->estimation.back().pattern->transitions[index];
+    auto const repeat_count = [&]() -> size_t {
+        if (p->estimation.size() > transition.pop_count) {
+            auto const & target = p->estimation[p->estimation.size() - transition.pop_count - 1];
+            assert(target.pattern == transition.pattern);
+            if (target.node_index == transition.node_index) {
+                return target.repeat - 1;
+            }
+        }
+        return 0;
+    }();
+    return transition.ocurence_count - repeat_count;
 }
 
 auto get_probability(Prediction const * p) -> double {
-    auto count = size_t(0u);
+    auto const current_transition = get_current_transition(p);
 
-    for (auto const & transition : p->estimation.back().pattern->transitions)
-        count += transition.ocurence_count;
+    auto const proba = [&]() {
+        if (p->estimation.size() < current_transition->pop_count) {
+            return 1.;
+        }
 
-    auto const proba = static_cast<double>(get_count(p)) / static_cast<double>(count);
+        auto count = size_t(0u);
+        auto total_count = size_t(0u);
+
+        auto const transition_count = p->estimation.back().pattern->transitions.size();
+        for (auto transition_index = 0u; transition_index < transition_count; ++transition_index) {
+            auto const transition_count = compute_transition_occurence_count(p, transition_index);
+            total_count += transition_count;
+            if (transition_index == p->transition_index)
+                count = transition_count;
+        }
+
+        return static_cast<double>(count) / static_cast<double>(total_count);
+    }();
     // assert(proba >= 0. && proba <= 1.);
     return proba;
 }
