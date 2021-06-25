@@ -54,6 +54,42 @@ static auto descend(Estimation & e) -> void {
     }
 }
 
+enum class get_child_policy { check_loop_count, ignore_loop_count };
+template <get_child_policy policy>
+static auto get_estimation_child(Estimation * estimation, Transition const & transition) -> bool {
+    if (transition.pop_count < estimation->size()) {
+        estimation->resize(estimation->size() - transition.pop_count);
+        assert(estimation->back().pattern == transition.pattern);
+        if (estimation->back().node_index == transition.node_index) {
+            assert(estimation->back().repeat > 0);
+
+            ++estimation->back().repeat;
+
+            // Detect too much loop iterations
+            auto const node =
+                    as_pattern(estimation->back().pattern)->nodes[estimation->back().node_index];
+
+            if constexpr (policy == get_child_policy::check_loop_count) {
+                if (estimation->back().repeat == node.count)
+                    return false;
+            }
+        } else {
+            estimation->back().node_index = transition.node_index;
+            estimation->back().repeat = 1;
+        }
+    } else {
+        auto const repeat = (as_pattern(transition.pattern)->nodes[transition.node_index].pattern ==
+                             estimation->front().pattern)
+                                    ? size_t(2)
+                                    : size_t(1);
+        estimation->clear();
+        estimation->emplace_back(
+                EstimationNode { transition.pattern, transition.node_index, repeat });
+    }
+    descend(*estimation);
+    return true;
+}
+
 // ----------------------------------------------------------------
 // Estimation
 // ----------------------------------------------------------------
@@ -84,38 +120,14 @@ auto update_estimation(Estimation * estimation, Terminal const * terminal) -> vo
     if (estimation->size() > 0) {
         for (auto const transition : estimation->back().pattern->transitions) {
             if (transition.terminal == terminal) {
-                if (transition.pop_count < estimation->size()) {
-                    estimation->resize(estimation->size() - transition.pop_count);
-                    assert(estimation->back().pattern == transition.pattern);
-                    if (estimation->back().node_index == transition.node_index) {
-                        assert(estimation->back().repeat > 0);
-
-                        ++estimation->back().repeat;
-
-                        // Detect too much loop iterations
-                        auto const node = as_pattern(estimation->back().pattern)
-                                                  ->nodes[estimation->back().node_index];
-                        if (estimation->back().repeat == node.count) {
-                            break;
-                        }
-                    } else {
-                        estimation->back().node_index = transition.node_index;
-                        estimation->back().repeat = 1;
-                    }
+                if (get_estimation_child<get_child_policy::check_loop_count>(estimation,
+                                                                             transition)) {
+                    assert(as_pattern(estimation->back().pattern)->symbol == terminal);
+                    assert(estimation->back().pattern == terminal->pattern);
+                    return;
                 } else {
-                    auto const repeat =
-                            (as_pattern(transition.pattern)->nodes[transition.node_index].pattern ==
-                             estimation->front().pattern)
-                                    ? size_t(2)
-                                    : size_t(1);
-                    estimation->clear();
-                    estimation->emplace_back(
-                            EstimationNode { transition.pattern, transition.node_index, repeat });
+                    break;
                 }
-                descend(*estimation);
-                assert(as_pattern(estimation->back().pattern)->symbol == terminal);
-                assert(estimation->back().pattern == terminal->pattern);
-                return;
             }
         }
         estimation->clear();
@@ -192,36 +204,13 @@ auto get_prediction_tree_child(Prediction * p) -> bool {
     if (is_fake_pattern(transition.pattern)) {
         assert(false);  // TODO
     } else {
-        if (transition.pop_count < p->estimation.size()) {
-            p->estimation.resize(p->estimation.size() - transition.pop_count);
-            assert(p->estimation.back().pattern == transition.pattern);
-            if (p->estimation.back().node_index == transition.node_index)
-                ++p->estimation.back().repeat;
-            else {
-                p->estimation.back().node_index = transition.node_index;
-                p->estimation.back().repeat = 1;
-            }
-        } else {
-            auto const repeat =
-                    (as_pattern(transition.pattern)->nodes[transition.node_index].pattern ==
-                     p->estimation.front().pattern)
-                            ? size_t(2)
-                            : size_t(1);
-            p->estimation.clear();
-            p->estimation.emplace_back(
-                    EstimationNode { transition.pattern, transition.node_index, repeat });
-        }
-        descend(p->estimation);
+        get_estimation_child<get_child_policy::ignore_loop_count>(&p->estimation, transition);
         p->transition_index = 0u;
         return skip_false_prediction(p);
     }
 }
 
 static auto get_current_transition(Prediction const * p) -> Transition const * {
-    assert(p != nullptr);
-    assert(p->estimation.size() > 0);
-    assert(p->estimation.back().pattern != nullptr);
-    assert(p->estimation.back().pattern->transitions.size() > p->transition_index);
     return &p->estimation.back().pattern->transitions[p->transition_index];
 }
 

@@ -23,8 +23,9 @@ eta_factorizer_src = [
     'src/factorization/bin_file.cpp',
     'src/factorization/check.cpp',
     'src/factorization/export.cpp',
-    'src/factorization/reduction.cpp',
+    'src/factorization/flow_graph.cpp',
     'src/factorization/prediction.cpp',
+    'src/factorization/reduction.cpp',
 ]
 
 eta_factorizer_lib = static_library('eta_factorizer',
