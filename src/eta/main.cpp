@@ -22,7 +22,6 @@ static auto print_tree(
         terminal_printer const & printer,
         size_t indent,
         std::unordered_map<NonTerminal const *, std::string> const & non_terminal_names) -> void {
-    static auto simple_leaf = false;
     auto const temporal_checkpoint = indent <= 1 && occurrences_count(symbol) == 1;
     if (is_terminal(symbol)) {
         os << '"';
@@ -48,7 +47,7 @@ static auto print_tree(
         auto node = nonterminal->first;
         while (true) {
             os << std::endl;
-            for (auto i = 0; i < indent; ++i)
+            for (auto i = 0u; i < indent; ++i)
                 os << "    ";
             set_color(os, eta::color_t::cyan);
 
