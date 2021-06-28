@@ -6,10 +6,16 @@
 
 // -----------------------------------------------------------
 
+enum class LoopEstimation : bool {
+    from_start,
+    unknown,
+};
+
 struct EstimationNode {
     PatternBase const * pattern;
     size_t node_index;
     size_t repeat;
+    LoopEstimation repeat_from_start;
 };
 
 using Estimation = std::vector<EstimationNode>;
