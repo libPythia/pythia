@@ -50,51 +50,45 @@ auto compare(Grammar & g, std::string const & str, terminal_printer const & prin
     }();
 
     auto e = Estimation {};
-    auto p = Prediction {};
-    auto p2 = Prediction {};
     auto fg = buildFlowGraph(g);
 
     init_estimation(&e, &fg);
-    // init_prediction(&p);
-    // init_prediction(&p2);
+
+    auto do_prediction = [&printer](auto rec, auto prediction, auto depth) -> void {
+        auto first = true;
+        do {
+            if (first) {
+                first = false;
+            } else
+                std::cout << ", ";
+
+            print_symbol(get_terminal(prediction), printer);
+            std::cout << ' ' << static_cast<int>(get_probability(prediction) * 100.) << '%';
+
+            if (depth > 0) {
+                auto child_prediction = Prediction {};
+                copy_prediction(&child_prediction, prediction);
+                if (get_prediction_tree_child(&child_prediction)) {
+                    std::cout << " (";
+                    rec(rec, &child_prediction, depth - 1);
+                    std::cout << ')';
+                }
+            }
+
+        } while (get_prediction_tree_sibling(prediction));
+    };
 
     for (auto const & it : trace) {
         update_estimation(&e, it.first);
         std::cout << "# Update " << it.second << std::endl;
-        auto first = true;
+        auto p = Prediction {};
         if (reset_prediction(&p, &e)) {
-            do {
-                if (first) {
-                    first = false;
-                    std::cout << "-> Predict ";
-                } else
-                    std::cout << ", ";
-                print_symbol(get_terminal(&p), printer);
-                std::cout << ' ' << static_cast<int>(get_probability(&p) * 100.) << '%';
-                copy_prediction(&p2, &p);
-                if (get_prediction_tree_child(&p2)) {
-                    auto first2 = true;
-                    do {
-                        if (first2) {
-                            first2 = false;
-                            std::cout << " (";
-                        } else {
-                            std::cout << ", ";
-                        }
-                        print_symbol(get_terminal(&p2), printer);
-                        std::cout << ' ' << static_cast<int>(get_probability(&p2) * 100.) << '%';
-                    } while (get_prediction_tree_sibling(&p2));
-                    std::cout << ')';
-                }
-            } while (get_prediction_tree_sibling(&p));
+            std::cout << "-> Predict ";
+            do_prediction(do_prediction, &p, 3);
         }
 
         std::cout << std::endl;
     }
-
-    // deinit_prediction(&p2);
-    // deinit_prediction(&p);
-    // deinit_estimation(&e);
 
     eta::set_color(std::cout, eta::color_t::standard);
     eta::set_style(std::cout, eta::style_t::standard);
