@@ -17,7 +17,7 @@ struct log_lock {
 };
 
 template <typename... T> static auto log(T &&... args) {
-    if (disable_logging == 0) {
+    if (disable_logging > 0) {
         auto & os = getLogOutput();
         ((os << args), ...);
         os << std::endl;
@@ -113,8 +113,6 @@ auto init_estimation(Estimation * e, FlowGraph const * g) -> void {
 auto update_estimation(Estimation * estimation, Terminal const * terminal) -> void {
     assert(estimation != nullptr);
 
-    auto lck = log_lock {};  // TODO
-
     if (terminal == nullptr) {
         estimation->clear();
         return;
@@ -140,6 +138,8 @@ auto update_estimation(Estimation * estimation, Terminal const * terminal) -> vo
 
     estimation->emplace_back(
             EstimationNode { terminal->pattern, 0, 1, LoopEstimation::from_start });
+
+    return;
 }
 
 // ----------------------------------------------------------------
@@ -159,23 +159,34 @@ static auto skip_false_prediction(Prediction * p) -> bool {
             return false;
         }
 
+        auto const & transition = transitions[p->transition_index];
 
         if (get_probability(p) > 0.) {  // TODO precompute this value if possible
-            auto const & transition = transitions[p->transition_index];
-
             if (p->estimation.size() <= transition.pop_count) {
                 return true;
             }
 
             auto const pattern_index = p->estimation.size() - transition.pop_count - 1;
-            if (p->estimation[pattern_index].pattern == transition.pattern) {
-                auto const node_index = p->estimation[pattern_index].node_index;
+            auto const & destination = p->estimation[pattern_index];
+
+            if (destination.pattern == transition.pattern) {
+                auto const node_index = destination.node_index;
                 auto const & node = as_pattern(transition.pattern)->nodes[node_index];
-                if ((transition.node_index == node_index &&
-                     node.count > p->estimation[pattern_index].repeat) ||
-                    (transition.node_index == node_index + 1 &&
-                     node.count <= p->estimation[pattern_index].repeat)) {
-                    return true;
+                auto const stay_in_loop = transition.node_index == node_index;
+                auto const exit_loop = transition.node_index == node_index + 1;
+                assert(node.count >= destination.repeat);
+                auto const max_iteration_count_reached = node.count == destination.repeat;
+
+                if (stay_in_loop) {
+                    if (max_iteration_count_reached == false) {
+                        return true;
+                    }
+                } else if (exit_loop) {
+                    if (destination.repeat_from_start == LoopEstimation::unknown) {
+                        return true;
+                    } else if (max_iteration_count_reached) {
+                        return true;
+                    }
                 }
             }
         }
