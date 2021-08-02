@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cassert>
+
 #include "reduction.hpp"
 
 struct Pattern;
@@ -43,15 +45,29 @@ struct FakePatternOccurence final {
 
 struct FakePattern : public PatternBase {
     std::vector<FakePatternOccurence> patterns;
+    size_t count;
+    Terminal const * terminal;
 
     FakePattern() : PatternBase(true) {}
 };
 
 inline auto is_fake_pattern(PatternBase const * p) { return p->is_fake; }
-inline auto as_fake_pattern(PatternBase const * p) { return static_cast<FakePattern const *>(p); }
-inline auto as_fake_pattern(PatternBase * p) { return static_cast<FakePattern *>(p); }
-inline auto as_pattern(PatternBase const * p) { return static_cast<Pattern const *>(p); }
-inline auto as_pattern(PatternBase * p) { return static_cast<Pattern *>(p); }
+inline auto as_fake_pattern(PatternBase const * p) {
+    assert(is_fake_pattern(p));
+    return static_cast<FakePattern const *>(p);
+}
+inline auto as_fake_pattern(PatternBase * p) {
+    assert(is_fake_pattern(p));
+    return static_cast<FakePattern *>(p);
+}
+inline auto as_pattern(PatternBase const * p) {
+    assert(!is_fake_pattern(p));
+    return static_cast<Pattern const *>(p);
+}
+inline auto as_pattern(PatternBase * p) {
+    assert(!is_fake_pattern(p));
+    return static_cast<Pattern *>(p);
+}
 
 struct FlowGraph {
     std::vector<Pattern> patterns;

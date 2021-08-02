@@ -84,7 +84,7 @@ auto compare(Grammar & g, std::string const & str, terminal_printer const & prin
         auto p = Prediction {};
         if (reset_prediction(&p, &e)) {
             std::cout << "-> Predict ";
-            do_prediction(do_prediction, &p, 3);
+            do_prediction(do_prediction, &p, 2);
         }
 
         std::cout << std::endl;

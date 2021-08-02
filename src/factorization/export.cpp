@@ -274,6 +274,12 @@ auto print_dot_file(Grammar const & g,
     print_dot_file_end(os);
 }
 
+static auto get_first_terminal(Symbol const * s) -> Terminal const * {
+    if (is_terminal(s))
+        return as_terminal(s);
+    return get_first_terminal(as_nonterminal(s)->first->maps_to);
+}
+
 auto print_flow_graph(FlowGraph const & fg, std::ostream & os, terminal_printer const & tp)
         -> void {
     auto const color = "white";
@@ -303,25 +309,22 @@ auto print_flow_graph(FlowGraph const & fg, std::ostream & os, terminal_printer 
 
     auto print_transitions = [&](PatternBase const * pattern) {
         for (auto const & transition : pattern->transitions) {
-            if (is_fake_pattern(transition.pattern)) {
-                os << "    \"" << pattern << "\" -> \"" << transition.pattern << "\" [label=\"";
-                tp(transition.terminal, os);
-                os << ' ' << transition.ocurence_count;
-                os << "\", color=red, fontcolor=red]\n";
-            } else {
-                os << "    \"" << pattern << "\" -> \"" << transition.pattern << "\":\""
-                   << transition.node_index << "\" [label=\"";
-                tp(transition.terminal, os);
-                os << ' ' << transition.ocurence_count;
-                os << " (" << transition.pop_count << " -> " << transition.node_index << ')';
-                os << "\", color=red, fontcolor=red]\n";
+            os << "    \"" << pattern << "\" -> \"" << transition.pattern << "\":\""
+               << transition.node_index << "\" [label=\"";
+            tp(transition.terminal, os);
+            os << ' ' << transition.ocurence_count;
+            os << " (" << transition.pop_count;
+            if (!is_fake_pattern(transition.pattern)) {
+                os << " -> " << transition.node_index;
             }
+            os << ")\", color=red, fontcolor=red]\n";
         }
     };
 
     for (auto const & fake_pattern : fg.fake_patterns) {
-        os << "\n    \"" << fake_pattern.get()
-           << "\" [label=\"fake\", color=green, fontcolor=green];";
+        os << "\n    \"" << fake_pattern.get() << "\" [label=\"fake ";
+        tp(get_first_terminal(as_pattern(fake_pattern->patterns.front().pattern)->symbol), os);
+        os << " (" << fake_pattern.get()->count << ")\", color=green, fontcolor=green];";
         print_transitions(fake_pattern.get());
 
         for (auto const & pattern : fake_pattern->patterns) {

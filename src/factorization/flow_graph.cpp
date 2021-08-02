@@ -1,6 +1,7 @@
 #include "flow_graph.hpp"
 
 #include <cassert>
+#include <iostream>  // TODO remove
 
 static auto getSymbolOfNode(GrammarNode const * n) -> Symbol const * {
     while (is_node(n->next))
@@ -67,6 +68,7 @@ static auto addTransition(std::vector<Transition> * out,
                                                                transition->node_index });
                 transition->node_index = -1;
                 transition->pattern = ptr;
+                ptr->terminal = first_terminal;
                 return ptr;
             }
         }();
@@ -143,6 +145,7 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
         if (pattern.symbol->occurrences_with_successor.size() +
                     pattern.symbol->occurrences_without_successor.size() ==
             0)
+
             graph.roots.push_back(&pattern);
     }
 
@@ -160,20 +163,23 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
         exploreTransitions(&pattern.transitions, graph.fake_patterns, patterns, pattern.symbol, 1);
     }
 
+    auto const initial_fake_pattern_count = graph.fake_patterns.size();
     for (auto i = 0u; i < graph.fake_patterns.size(); ++i) {
+        if (i > initial_fake_pattern_count) {
+            std::cerr << "FAKE PATTERN GENERATION FAILURE" << std::endl;
+            break;
+        }
+
         auto const fake_pattern = graph.fake_patterns[i].get();
+        auto total_occurence_count = 0u;
         for (auto const & node : fake_pattern->patterns) {
             auto const pattern = as_pattern(node.pattern);
             auto const & current_node = pattern->nodes[node.node_index];
             auto const ocurrences_count = getOcurenceCount(current_node.node);
-            if (current_node.node->repeats > 1) {
-                addTransition(&fake_pattern->transitions,
-                              graph.fake_patterns,
-                              pattern,
-                              current_node.node,
-                              1,
-                              (current_node.node->repeats - 1) * ocurrences_count);  // TODO
-            }
+            total_occurence_count += ocurrences_count;
+
+            if (fake_pattern->count == 0 || fake_pattern->count > current_node.node->repeats)
+                fake_pattern->count = current_node.node->repeats;
 
             auto const next_node_index = node.node_index + 1;
             if (next_node_index < pattern->nodes.size()) {
@@ -191,6 +197,13 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
                                    1);  // TODO
             }
         }
+
+        if (fake_pattern->count > 1)
+            fake_pattern->transitions.push_back(Transition { fake_pattern->terminal,
+                                                             fake_pattern,
+                                                             size_t(-1),
+                                                             0,
+                                                             total_occurence_count });
     }
 
     // TODO debug remove
@@ -201,11 +214,12 @@ auto buildFlowGraph(Grammar & g) -> FlowGraph {
             if (fake_pattern->patterns.size() < 2)
                 return false;
 
-            for (auto const [pattern, node_index] : fake_pattern->patterns) {
-                auto const node = as_pattern(pattern)->nodes[node_index].node;
-                if (getFirstTerminal(node->maps_to) != transition.terminal)
-                    return false;
-            }
+            // TODO
+            // for (auto const [pattern, node_index] : fake_pattern->patterns) {
+            //     auto const node = as_pattern(pattern)->nodes[node_index].node;
+            //     if (getFirstTerminal(node->maps_to) != transition.terminal)
+            //         return false;
+            // }
 
             return true;
         } else {
