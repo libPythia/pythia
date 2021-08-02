@@ -1,0 +1,178 @@
+
+#include <atomic>
+#include <cassert>
+#include <chrono>
+#include <ctime>
+#include <eta/factorization/check.hpp>
+#include <eta/factorization/export.hpp>
+#include <eta/factorization/reduction.hpp>
+#include <iostream>
+#include <mutex>
+#include <random>
+#include <sstream>
+#include <thread>
+#include <vector>
+
+#include "ProgramOptions.hxx"
+#include "helpers.hpp"
+#include "rang.hpp"
+
+struct settings_t {
+    unsigned int max_error_count;
+    bool print_valid;
+    bool no_color;
+    char alphabet_size;
+    unsigned int trace_size;
+    bool silent;
+    unsigned int thread_count;
+};
+
+static auto error_count = std::atomic_uint { 0u };
+static auto valid_count = std::atomic_uint { 0u };
+static auto settings = settings_t {};
+static auto next_input = std::vector<char> {};
+static auto input_mtx = std::mutex {};
+static auto output_mtx = std::mutex {};
+
+auto parse_args(int argc, char ** argv) -> void {
+    auto parser = po::parser {};
+
+    // auto & duration_opt = parser["duration"].abbreviation('d').type(po::u32).fallback(5);
+    // duration_opt.description("Maximum duration of the test in seconds. Default is 5 secondes");
+
+    auto & max_error_count_opt = parser["max-errors"].abbreviation('e').type(po::u32).fallback(1);
+    max_error_count_opt.description(
+            "Print debug information instead of factorized trace. 0 for no "
+            "limit. Default is 1.");
+
+    // auto & thread_count_opt = parser["threads"].abbreviation('t').type(po::u32).fallback(1);
+    // thread_count_opt.description("Number of threads to launch. Default is 1");
+
+    auto & help_opt = parser["help"].abbreviation('h');
+    help_opt.description("Print this help.");
+
+    auto & print_valid_opt = parser["print-valid"].abbreviation('v');
+    print_valid_opt.description("Print successfull test too.");
+
+    auto & no_color_opt = parser["no-color"];
+    no_color_opt.description("Don't use colors in output");
+
+    auto & trace_size_opt = parser["trace-size"].abbreviation('s').type(po::u32).fallback(10);
+
+    auto & alphabet_size_opt = parser["alphabet-size"].abbreviation('a').type(po::u32).fallback(4);
+
+    auto & silent_opt = parser["silent"].abbreviation('S');
+
+    if (!parser(argc, argv)) {
+        std::cerr << "errors occurred; aborting\n";
+        std::exit(-1);
+    }
+
+    if (help_opt.was_set()) {
+        std::cout << parser << std::endl;
+        std::exit(0);
+    }
+
+    settings.max_error_count = max_error_count_opt.get().u32;
+    settings.print_valid = print_valid_opt.was_set();
+    settings.no_color = no_color_opt.was_set();
+    settings.alphabet_size = alphabet_size_opt.get().u32;
+    settings.trace_size = trace_size_opt.get().u32;
+    settings.silent = silent_opt.was_set();
+    settings.thread_count = 8;
+};
+
+auto get_string(std::vector<char> const & input) -> std::string {
+    auto res = std::string {};
+    res.reserve(input.size());
+    for (auto const c : input)
+        res.push_back(c + 'a');
+    return res;
+}
+
+auto report_success(std::vector<char> const input) {
+    ++valid_count;
+    if (settings.silent)
+        return;
+    auto lock = std::unique_lock(output_mtx);
+    if (!settings.no_color)
+        std::cout << rang::fg::green << rang::style::bold;
+    std::cout << '+' << get_string(input) << ':';
+    if (!settings.no_color)
+        std::cout << rang::fg::reset << rang::style::reset;
+    std::cout /* << output */ << std::endl;  // TODO
+}
+
+auto report_failure(std::vector<char> const input) {
+    ++error_count;
+    if (settings.silent)
+        return;
+
+    auto lock = std::unique_lock(output_mtx);
+    if (!settings.no_color)
+        std::cout << rang::fg::red << rang::style::bold;
+    if (settings.print_valid)
+        std::cout << '-';
+    std::cout << get_string(input) << ':';
+    if (!settings.no_color)
+        std::cout << rang::fg::reset << rang::style::reset;
+    std::cout /* << output << " (" << data << ')' */ << std::endl;  // TODO
+}
+
+auto test_input(std::vector<char> const input) -> void {
+    auto grammar = Grammar {};
+    auto root = static_cast<NonTerminal *>(nullptr);
+
+    for (auto i = 0; i < settings.alphabet_size; ++i)
+        new_terminal(grammar, reinterpret_cast<void *>(static_cast<intptr_t>(i)));
+
+    for (auto c : input)
+        root = insertSymbol(grammar, root, grammar.terminals[c].get());
+
+    report_success(input);  // TODO
+}
+
+auto worker() -> void {
+    while (true) {
+        auto const input = [] {
+            auto const lck = std::unique_lock { input_mtx };
+            auto res = next_input;
+            for (auto & c : next_input) {
+                ++c;
+                if (c == settings.alphabet_size)
+                    c = 0;
+                else
+                    return res;
+            }
+            next_input.clear();  // No more input to compute
+            return res;
+        }();
+
+        if (input.size() == 0)
+            return;
+
+        test_input(input);
+    }
+}
+
+auto main(int argc, char ** argv) -> int {
+    parse_args(argc, argv);
+
+    next_input.resize(settings.trace_size, 0);
+
+    auto const start_time = std::chrono::system_clock::now();
+
+    auto threads = std::vector<std::thread> {};
+
+    for (auto i = 0u; i < settings.thread_count; ++i)
+        threads.emplace_back(worker);
+
+    for (auto & t : threads)
+        t.join();
+
+    auto const duration = std::chrono::high_resolution_clock::now() - start_time;
+    std::cerr << "Finished with " << error_count << " errors over " << (valid_count + error_count)
+              << " tests in " << std::chrono::duration_cast<std::chrono::seconds>(duration).count()
+              << "s over " << settings.thread_count << " threads." << std::endl;
+}
+
