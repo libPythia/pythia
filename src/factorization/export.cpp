@@ -125,30 +125,6 @@ static auto build_non_terminal_names(Grammar const & g)
     return res;
 }
 
-static auto build_non_terminal_names(FlowGraph const & fg)
-        -> std::unordered_map<size_t, std::string> {
-    auto res = std::unordered_map<size_t, std::string> {};
-    auto tmp = std::string {};
-    auto incr = [&tmp](auto rec, int index) -> void {
-        if (index == -1) {
-            tmp = "A" + tmp;
-        } else if (tmp[index] == 'Z') {
-            tmp[index] = 'A';
-            rec(rec, index - 1);
-        } else {
-            ++tmp[index];
-        }
-    };
-    for (auto i = 0u; i < fg.patterns.size(); ++i) {  // TODO
-        auto const & pattern = fg.patterns[i];
-        if (is_nonterminal(pattern.symbol)) {
-            incr(incr, tmp.size() - 1);
-            res.emplace(i, tmp);
-        }
-    }
-    return res;
-}
-
 auto print_grammar(Grammar const & g, std::ostream & os, terminal_printer const & p) -> void {
     auto const nonterminals = build_non_terminal_names(g);
 
@@ -283,7 +259,6 @@ static auto get_first_terminal(Symbol const * s) -> Terminal const * {
 auto print_flow_graph(FlowGraph const & fg, std::ostream & os, terminal_printer const & tp)
         -> void {
     auto const color = "white";
-    auto const non_terminals_names = build_non_terminal_names(fg);
 
     os << "digraph g {\n"
           "    rankdir=TD;\n"
@@ -294,78 +269,49 @@ auto print_flow_graph(FlowGraph const & fg, std::ostream & os, terminal_printer 
           "    labeljust=\"c\";\n"
           "    labelloc=\"c\";\n"
           "    fontcolor=\""
-       << color << "\";\n";
+       << color << "\";";
 
-    os << "    node [color=\"" << color << "\", fontcolor=\"" << color << "\", shape=rectangle];\n";
-    os << "    edge [color=\"" << color << "\", fontcolor=\"" << color << "\"];\n";
+    os << "\n\n    node [color=\"" << color << "\", fontcolor=\"" << color << "\"];\n";
 
-    // TODO usefull ?
-    // for (auto const root_index : fg.roots) {
-    // assert(is_nonterminal(fg.patterns[root_index.value].symbol));
-    // os << "    " << root_index.value << " [shape=cds];\n";
-    // }
+    for (auto const & node : fg.nodes) {
+        if (node->son == nullptr) {
+            os << "\n    \"" << node.get() << "\" [label=\"";
+            if (node->first_terminal != nullptr)
+                tp(node->first_terminal, os);
+            else
+                os << "nullptr";
+            os << " (#" << node->count << ")\", shape=ellipse];";
+        } else
+            os << "\n    \"" << node.get() << "\" [label=\"" << node->repeats << "x (#"
+               << node->count << ")\", shape=rectangle];";
+    }
 
-    os << std::endl;
+    os << "\n\n    edge [color=\"red\", fontcolor=\"red\"];\n";
+    for (auto const & node : fg.nodes)
+        if (node->son != nullptr)
+            os << "\n    \"" << node.get() << "\" -> \"" << node->son << '"';
 
-    auto print_transitions = [&](PatternBase const * pattern) {
-        for (auto const & transition : pattern->transitions) {
-            os << "    \"" << pattern << "\" -> \"" << transition.pattern << "\":\""
-               << transition.node_index << "\" [label=\"";
-            tp(transition.terminal, os);
-            os << ' ' << transition.ocurence_count;
-            os << " (" << transition.pop_count;
-            if (!is_fake_pattern(transition.pattern)) {
-                os << " -> " << transition.node_index;
-            }
-            os << ")\", color=red, fontcolor=red]\n";
-        }
-    };
-
-    for (auto const & fake_pattern : fg.fake_patterns) {
-        os << "\n    \"" << fake_pattern.get() << "\" [label=\"fake ";
-        tp(get_first_terminal(as_pattern(fake_pattern->patterns.front().pattern)->symbol), os);
-        os << " (" << fake_pattern.get()->count << ")\", color=green, fontcolor=green];";
-        print_transitions(fake_pattern.get());
-
-        for (auto const & pattern : fake_pattern->patterns) {
-            os << "\n    \"" << fake_pattern.get() << "\" -> \"" << pattern.pattern << "\":\""
-               << pattern.node_index << "\" [color=green];";
+    os << "\n\n    edge [color=\"orange\", fontcolor=\"orange\"];\n";
+    for (auto const & node : fg.nodes) {
+        if (node->next != nullptr) {
+            os << "\n    \"" << node.get() << "\" -> \"" << node->next << "\" [label=\"";
+            tp(node->next->first_terminal, os);
+            os << "\"]";
         }
     }
 
-    for (auto pattern_index = 0u; pattern_index < fg.patterns.size(); ++pattern_index) {
-        auto const & pattern = fg.patterns[pattern_index];
-
-        if (is_terminal(pattern.symbol)) {
-            os << "\n    \"" << &pattern << "\" [label=\"";
-            tp(as_terminal(pattern.symbol), os);
-            os << "\"];\n";
-        } else {
-            os << "\n    \"" << &pattern << "\" [\n";
-            os << "        shape=rectangle\n"
-                  "        label=<\n"
-                  "          <table border='0' cellborder='0'>\n";
-            os << "            <tr>\n"
-                  "              <td port='head'>";
-            os << non_terminals_names.at(pattern_index) << " :</td>\n";
-
-            for (auto i = 0u; i < pattern.nodes.size(); ++i)
-                os << "              <td port='" << i << "'>" << pattern.nodes[i].count
-                   << "x</td>\n";
-
-            os << "            </tr>\n"
-                  "          </table>\n"
-                  "        >\n"
-                  "    ]\n";
+    os << "\n\n    edge [color=\"green\", fontcolor=\"green\"];\n";
+    for (auto const & node : fg.nodes) {
+        for (auto const & transition : node->transitions) {
+            os << "\n    \"" << node.get() << "\" -> \"" << transition.node << "\" [label=\"";
+            tp(transition.node->first_terminal, os);
+            os << " ↑" << transition.pop_count << "\"]";
         }
-
-        for (auto i = 0u; i < pattern.nodes.size(); ++i) {
-            os << "    \"" << &pattern << "\":\"" << i << "\" -> \"" << pattern.nodes[i].pattern
-               << "\";\n";
-        }
-
-        print_transitions(&pattern);
     }
 
-    os << "    }\n";
+    for (auto const & node : fg.nodes)
+        if (node->next != nullptr)
+            os << "\n    {rank = same; \"" << node.get() << "\"; \"" << node->next << "\";}";
+
+    os << "\n}\n";
 }

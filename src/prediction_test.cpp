@@ -8,6 +8,7 @@
 #include <eta/factorization/reduction.hpp>
 #include <iostream>
 #include <mutex>
+#include <optional>
 #include <random>
 #include <sstream>
 #include <thread>
@@ -16,6 +17,8 @@
 #include "ProgramOptions.hxx"
 #include "helpers.hpp"
 #include "rang.hpp"
+
+// -----------------------------------------------------------------------
 
 struct settings_t {
     unsigned int max_error_count;
@@ -27,12 +30,41 @@ struct settings_t {
     unsigned int thread_count;
 };
 
+// -----------------------------------------------------------------------
+
+class Input final {
+  public:
+    Input() = default;
+    auto operator=(Input const &) -> Input & = default;
+    Input(char size, char alphabet_size) : _str(size, 'a'), _alphabet_size(alphabet_size) {}
+
+    auto next() -> std::optional<std::string> {
+        auto res = _str;
+        for (auto & c : _str) {
+            c += 1;
+            if (c < 'a' + _alphabet_size)
+                return res;
+            c = 'a';
+        }
+        _str = "";
+        return res;
+    }
+
+  private:
+    std::string _str;
+    char _alphabet_size;
+};
+
+// -----------------------------------------------------------------------
+
 static auto error_count = std::atomic_uint { 0u };
 static auto valid_count = std::atomic_uint { 0u };
 static auto settings = settings_t {};
-static auto next_input = std::vector<char> {};
+static auto common_input = Input {};
 static auto input_mtx = std::mutex {};
 static auto output_mtx = std::mutex {};
+
+// -----------------------------------------------------------------------
 
 auto parse_args(int argc, char ** argv) -> void {
     auto parser = po::parser {};
@@ -82,28 +114,22 @@ auto parse_args(int argc, char ** argv) -> void {
     settings.thread_count = 8;
 };
 
-auto get_string(std::vector<char> const & input) -> std::string {
-    auto res = std::string {};
-    res.reserve(input.size());
-    for (auto const c : input)
-        res.push_back(c + 'a');
-    return res;
-}
+// -----------------------------------------------------------------------
 
-auto report_success(std::vector<char> const input) {
+auto report_success(std::string const & input) {
     ++valid_count;
     if (settings.silent)
         return;
     auto lock = std::unique_lock(output_mtx);
     if (!settings.no_color)
         std::cout << rang::fg::green << rang::style::bold;
-    std::cout << '+' << get_string(input) << ':';
+    std::cout << '+' << input << ':';
     if (!settings.no_color)
         std::cout << rang::fg::reset << rang::style::reset;
     std::cout /* << output */ << std::endl;  // TODO
 }
 
-auto report_failure(std::vector<char> const input) {
+auto report_failure(std::string const & input) {
     ++error_count;
     if (settings.silent)
         return;
@@ -113,13 +139,13 @@ auto report_failure(std::vector<char> const input) {
         std::cout << rang::fg::red << rang::style::bold;
     if (settings.print_valid)
         std::cout << '-';
-    std::cout << get_string(input) << ':';
+    std::cout << input << ':';
     if (!settings.no_color)
         std::cout << rang::fg::reset << rang::style::reset;
     std::cout /* << output << " (" << data << ')' */ << std::endl;  // TODO
 }
 
-auto test_input(std::vector<char> const input) -> void {
+auto test_input(std::string const & input) -> void {
     auto grammar = Grammar {};
     auto root = static_cast<NonTerminal *>(nullptr);
 
@@ -134,31 +160,23 @@ auto test_input(std::vector<char> const input) -> void {
 
 auto worker() -> void {
     while (true) {
-        auto const input = [] {
+        auto input = std::optional<std::string> { std::nullopt };
+        {
             auto const lck = std::unique_lock { input_mtx };
-            auto res = next_input;
-            for (auto & c : next_input) {
-                ++c;
-                if (c == settings.alphabet_size)
-                    c = 0;
-                else
-                    return res;
-            }
-            next_input.clear();  // No more input to compute
-            return res;
-        }();
+            input = common_input.next();
+        }
 
-        if (input.size() == 0)
+        if (input.has_value() == false)
             return;
 
-        test_input(input);
+        test_input(input.value());
     }
 }
 
 auto main(int argc, char ** argv) -> int {
     parse_args(argc, argv);
 
-    next_input.resize(settings.trace_size, 0);
+    common_input = Input(settings.trace_size, settings.alphabet_size);
 
     auto const start_time = std::chrono::system_clock::now();
 

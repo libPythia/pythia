@@ -1,80 +1,48 @@
 #pragma once
 
-#include <cassert>
+#include <iosfwd>
+#include <memory>
+#include <unordered_map>
+#include <vector>
 
-#include "reduction.hpp"
+struct Transition;
+struct FlowNode;
+struct Terminal;
+struct Grammar;
 
-struct Pattern;
-struct PatternBase;
-
-struct PatternNode {
-    GrammarNode const * node;
-    Pattern * pattern;
-    size_t count;
-};
-
-struct Transition {
-    Terminal const * terminal;
-    PatternBase * pattern;
-    size_t node_index;
+struct Transition final {
+    FlowNode * node;
     size_t pop_count;
-    size_t ocurence_count;
 };
 
-struct PatternBase {
-    bool is_fake;
-    virtual ~PatternBase() = default;
+struct FlowNode final {
+    FlowNode * son;
+    FlowNode * next;
+    unsigned long int repeats;
+    unsigned long int count;
+    Terminal const * first_terminal;
     std::vector<Transition> transitions;
-
-    PatternBase(bool is_fake_) : is_fake(is_fake_) {}
 };
 
-struct Pattern : public PatternBase {
-    std::vector<PatternNode> nodes;
-    size_t size;
+class FlowGraph final {
+  public:
+    auto build_from(Grammar const & g) -> void;
+    auto load_from(std::istream & is) -> void;
+    auto save_to(std::ostream & os) -> void;
 
-    Symbol const * symbol;
+    auto get_entry_point(Terminal const *) const -> FlowNode const *;
 
-    Pattern() : PatternBase(false) {}
+    FlowGraph() = default;
+    FlowGraph(FlowGraph &&) = default;
+    FlowGraph(FlowGraph const &) = delete;
+    auto operator=(FlowGraph &&) -> FlowGraph & = default;
+    auto operator=(FlowGraph const &) -> FlowGraph & = delete;
+
+  private:
+    auto new_node() -> FlowNode *;
+
+  public:
+    std::unordered_map<Terminal const *, FlowNode *> entry_points;
+    std::vector<std::unique_ptr<FlowNode>> nodes;
 };
-
-struct FakePatternOccurence final {
-    PatternBase * pattern;
-    size_t node_index;
-};
-
-struct FakePattern : public PatternBase {
-    std::vector<FakePatternOccurence> patterns;
-    size_t count;
-    Terminal const * terminal;
-
-    FakePattern() : PatternBase(true) {}
-};
-
-inline auto is_fake_pattern(PatternBase const * p) { return p->is_fake; }
-inline auto as_fake_pattern(PatternBase const * p) {
-    assert(is_fake_pattern(p));
-    return static_cast<FakePattern const *>(p);
-}
-inline auto as_fake_pattern(PatternBase * p) {
-    assert(is_fake_pattern(p));
-    return static_cast<FakePattern *>(p);
-}
-inline auto as_pattern(PatternBase const * p) {
-    assert(!is_fake_pattern(p));
-    return static_cast<Pattern const *>(p);
-}
-inline auto as_pattern(PatternBase * p) {
-    assert(!is_fake_pattern(p));
-    return static_cast<Pattern *>(p);
-}
-
-struct FlowGraph {
-    std::vector<Pattern> patterns;
-    std::vector<Pattern *> roots;
-    std::vector<std::unique_ptr<FakePattern>> fake_patterns;
-    std::unordered_map<Terminal const *, PatternBase *> terminals_index;
-};
-
-auto buildFlowGraph(Grammar & g) -> FlowGraph;
 

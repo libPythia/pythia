@@ -1,42 +1,81 @@
 #pragma once
 
-#include <cassert>
-
 #include "flow_graph.hpp"
 
-// -----------------------------------------------------------
-
-enum class LoopEstimation : bool {
-    from_start,
-    unknown,
+enum class RepeatFromStart {
+    repeat_from_start,
+    repeat_from_unknown_index,
 };
 
-struct EstimationNode {
-    PatternBase const * pattern;
-    size_t node_index;
-    size_t repeat;
-    LoopEstimation repeat_from_start;
+class Estimation final {
+    friend class Prediction;
+
+    struct EstimationNode final {
+        FlowNode const * node;
+        size_t repeat;
+        RepeatFromStart repeat_from_start;
+
+        EstimationNode(FlowNode const * node_, size_t repeat_, RepeatFromStart repeat_from_start_);
+    };
+
+    struct Eventuality final {
+        std::vector<EstimationNode> nodes;
+    };
+
+  public:
+    auto update(FlowGraph const & graph, Terminal const * terminal) -> void;
+
+  private:  // For Prediction
+    auto update(FlowGraph const * graph, Terminal const * terminal) -> void;
+
+  private:
+    auto updateEventuality(Eventuality const & input,
+                           std::vector<Eventuality> & output,
+                           Terminal const *) const -> void;
+    auto get_parent(Eventuality const & eventuality, size_t pop_count) const
+            -> EstimationNode const *;
+    auto descend(Eventuality & eventuality) const -> void;
+    auto duplicate(Eventuality const & eventuality, size_t pop_count) const -> Eventuality;
+
+  public:  // private: // TODO
+    std::vector<Eventuality> eventualities;
 };
 
-using Estimation = std::vector<EstimationNode>;
+struct Probability {
+    size_t count;
+    size_t total;
 
-auto init_estimation(Estimation * e, FlowGraph const * g) -> void;
-auto update_estimation(Estimation * e, Terminal const * t) -> void;
-auto deinit_estimation(Estimation * e) -> void;
+    auto as_double() const { return static_cast<double>(count) / static_cast<double>(total); };
+};
 
-// -----------------------------------------------------------
+class Prediction {
+    // TODO reset and copy
 
-struct Prediction {
+    struct PredictionTransition final {
+        Terminal const * terminal;
+        size_t count;
+    };
+
+  public:
+    Prediction() = default;
+    Prediction(Prediction &&) = default;
+    Prediction(Prediction const &) = default;
+    auto operator=(Prediction &&) -> Prediction & = default;
+    auto operator=(Prediction const &) -> Prediction & = default;
+
+  public:
+    auto reset(Estimation const &) -> bool;
+    auto get_prediction_tree_child() -> bool;
+    auto get_prediction_tree_sibling() -> bool;
+    auto get_probability() const -> Probability;
+    auto get_terminal() const -> Terminal const *;
+
+  private:
+    auto compute_transitions() -> bool;
+
+  private:
     Estimation estimation;
-    size_t transition_index;
+    std::vector<PredictionTransition> transitions;
+    size_t count;
 };
-
-auto reset_prediction(Prediction * p, Estimation const * e) -> bool;
-auto copy_prediction(Prediction * to, Prediction const * from) -> void;
-auto get_prediction_tree_child(Prediction * p) -> bool;    // parents = parents->parents puis next
-auto get_prediction_tree_sibling(Prediction * p) -> bool;  // parents = parents->next puis next
-auto get_terminal(Prediction const * p) -> Terminal const *;
-auto get_probability(Prediction const * p) -> double;
-
-// -----------------------------------------------------------
 

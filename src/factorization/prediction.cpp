@@ -1,365 +1,267 @@
 #include "prediction.hpp"
 
 #include <algorithm>
-// #include <cassert>
-#include <fstream>  // TODO remove
+#include <cassert>
+#include <fstream>
 
-#ifdef assert
-#    undef assert
-#endif
-#define assert(x)                     \
-    do {                              \
-        if (!(x)) {                   \
-            log("Assert \"" #x "\""); \
-            std::abort();             \
-        }                             \
-    } while (false)
+#include "reduction.hpp"
 
 static auto getLogOutput() -> std::ostream & {
     static auto log_output = std::ofstream { "log_output.txt" };
     return log_output;
 }
-static int disable_logging = 0;
 
-struct log_lock {
-    log_lock() { ++disable_logging; }
-    ~log_lock() { --disable_logging; }
-};
-
-template <typename... T> static auto log(T &&... args) {
-    if (disable_logging == 0) {
-        auto & os = getLogOutput();
-        ((os << args), ...);
-        os << std::endl;
-    }
+template <typename... T> static auto log(T &&... args) -> void {
+    auto & os = getLogOutput();
+    ((os << args), ...);
+    os << std::endl;
 }
 
-static auto operator<<(std::ostream & os, Estimation const & e) -> std::ostream & {
-    auto first = true;
+static auto operator<<(std::ostream & os, Estimation const & estimation) -> std::ostream & {
+    auto first_eventuality = true;
     os << '{';
-    for (auto const & n : e) {
-        if (first)
-            first = false;
-        else
+
+    for (auto const & eventuality : estimation.eventualities) {
+        if (first_eventuality) {
+            first_eventuality = false;
+        } else {
             os << ", ";
-        os << n.pattern;
-        if (!is_fake_pattern(n.pattern)) {
-            auto const symbol = as_pattern(n.pattern)->symbol;
-            if (is_terminal(symbol))
-                os << '[' << (char const *)as_terminal(symbol)->payload << ']';
-            os << 'x' << n.repeat;
-        } else
-            os << "-fake";
+        }
+
+        auto first_node = true;
+        for (auto const & node : eventuality.nodes) {
+            if (first_node) {
+                first_node = false;
+                os << "[";
+            } else {
+                os << ", ";
+            }
+            os << node.repeat << ":";
+            if (node.node->son == nullptr)
+                os << (char const *)node.node->first_terminal->payload;
+            else
+                os << (node.repeat_from_start == RepeatFromStart::repeat_from_start ? "RFS"
+                                                                                    : "???");
+        }
+        if (first_node == false)
+            os << "]";
     }
     os << '}';
-
     return os;
 }
 
 // ----------------------------------------------------------------
-// Usefull for both estimation and prediction
+// EstimationNode
 // ----------------------------------------------------------------
 
-static auto descend(Estimation & e) -> void {
-    if (!is_fake_pattern(e.back().pattern)) {
-        while (true) {
-            auto const pattern = as_pattern(e.back().pattern);
-
-            if (is_terminal(pattern->symbol))
-                break;
-
-            e.emplace_back(EstimationNode { pattern->nodes[e.back().node_index].pattern,
-                                            0,
-                                            1,
-                                            LoopEstimation::from_start });
-        }
-    }
-}
-
-static auto get_estimation_child(Estimation * estimation, Transition const & transition) -> bool {
-    if (transition.pop_count < estimation->size()) {
-        estimation->resize(estimation->size() - transition.pop_count);
-        assert(estimation->back().pattern == transition.pattern);
-        if (estimation->back().node_index == transition.node_index) {
-            assert(estimation->back().repeat > 0);
-
-            ++estimation->back().repeat;
-        } else {
-            estimation->back().node_index = transition.node_index;
-            estimation->back().repeat = 1;
-            estimation->back().repeat_from_start = LoopEstimation::from_start;
-        }
-    } else {
-        estimation->clear();
-        if (is_fake_pattern(transition.pattern)) {
-            estimation->emplace_back(
-                    EstimationNode { transition.pattern, size_t(-1), 1, LoopEstimation::unknown });
-        } else if (as_pattern(transition.pattern)->nodes[transition.node_index].pattern ==
-                   estimation->front().pattern) {
-            estimation->emplace_back(EstimationNode { transition.pattern,
-                                                      transition.node_index,
-                                                      2,
-                                                      LoopEstimation::unknown });
-        } else {
-            estimation->emplace_back(EstimationNode { transition.pattern,
-                                                      transition.node_index,
-                                                      1,
-                                                      LoopEstimation::from_start });
-        }
-    }
-    descend(*estimation);
-    return true;
-}
+Estimation::EstimationNode::EstimationNode(FlowNode const * node_,
+                                           size_t repeat_,
+                                           RepeatFromStart repeat_from_start_)
+        : node(node_)
+        , repeat(repeat_)
+        , repeat_from_start(repeat_from_start_) {}
 
 // ----------------------------------------------------------------
 // Estimation
 // ----------------------------------------------------------------
 
-auto init_estimation(Estimation * e, FlowGraph const * g) -> void {
-    assert(e != nullptr);
-    assert(g != nullptr);
-    e->clear();
+auto Estimation::get_parent(Eventuality const & eventuality, size_t pop_count) const
+        -> EstimationNode const * {
+    if (pop_count >= eventuality.nodes.size())
+        return nullptr;
+    auto const index = eventuality.nodes.size() - pop_count - 1;
+    return &eventuality.nodes[index];
 }
 
-// ----------------------------------------------------------------
-
-auto update_estimation(Estimation * estimation, Terminal const * terminal) -> void {
-    assert(estimation != nullptr);
-
-    if (terminal == nullptr) {
-        log("Update estimation ", *estimation, " with unknown terminal");
-        estimation->clear();
-        return;
+auto Estimation::descend(Eventuality & eventuality) const -> void {
+    while (true) {
+        auto son = eventuality.nodes.back().node->son;
+        if (son == nullptr)
+            break;
+        eventuality.nodes.emplace_back(son, 1, RepeatFromStart::repeat_from_start);
+        son = son->son;
     }
+}
 
-    assert(terminal != nullptr);
-    assert(terminal->pattern != nullptr);
+auto Estimation::duplicate(Eventuality const & eventuality, size_t pop_count) const -> Eventuality {
+    assert(pop_count < eventuality.nodes.size());
+    auto res = Eventuality {};
+    std::copy(eventuality.nodes.begin(),
+              eventuality.nodes.begin() + (eventuality.nodes.size() - pop_count),
+              std::back_inserter(res.nodes));
+    return res;
+}
 
-    log("Update estimation ", *estimation, " with ", (char const *)terminal->payload);
+auto Estimation::updateEventuality(Eventuality const & input,
+                                   std::vector<Eventuality> & output,
+                                   Terminal const * terminal) const -> void {
+    for (auto const & transition : input.nodes.back().node->transitions) {
+        auto const terminal_str = (char const *)transition.node->first_terminal->payload;
 
-    if (estimation->size() > 0) {
-        for (auto const transition : estimation->back().pattern->transitions) {
-            if (transition.terminal == terminal) {
-                if (get_estimation_child(estimation, transition)) {
-                    assert(is_fake_pattern(estimation->back().pattern) ||
-                           as_pattern(estimation->back().pattern)->symbol == terminal);
-                    assert(is_fake_pattern(estimation->back().pattern) ||
-                           estimation->back().pattern == terminal->pattern);
-                    return;
+        if (transition.node->first_terminal == terminal) {
+            auto const destination = get_parent(input, transition.pop_count);
+            if (destination == nullptr) {  // ascend graph
+                auto new_eventuality = Eventuality {};
+                auto const loop =
+                        input.nodes.size() > 0 && transition.node->son == input.nodes.front().node;
+                if (loop) {
+                    log("Ascend in loop : ", terminal_str);
+                    new_eventuality.nodes.emplace_back(transition.node,
+                                                       2,
+                                                       RepeatFromStart::repeat_from_unknown_index);
                 } else {
-                    break;
+                    log("Ascend : ", terminal_str);
+                    new_eventuality.nodes.emplace_back(transition.node,
+                                                       1,
+                                                       RepeatFromStart::repeat_from_start);
                 }
+                output.emplace_back(std::move(new_eventuality));
+            } else if (destination->node == transition.node) {  // loop
+                if (destination->repeat < destination->node->repeats) {
+                    log("continue loop: ", terminal_str);
+                    auto eventuality = duplicate(input, transition.pop_count);
+                    eventuality.nodes.back().repeat += 1;
+                    output.emplace_back(std::move(eventuality));
+                } else {
+                    log("ignore, end of loop reached", terminal_str);
+                }
+            } else if (destination->node->next == transition.node) {  // advance
+                if (destination->repeat_from_start == RepeatFromStart::repeat_from_unknown_index ||
+                    destination->repeat == destination->node->repeats) {
+                    log("reach end of loop: ", terminal_str);
+                    auto eventuality = duplicate(input, transition.pop_count);
+                    auto & node = eventuality.nodes.back();
+                    node.repeat = 1;
+                    node.node = transition.node;
+                    node.repeat_from_start = RepeatFromStart::repeat_from_start;
+                    output.emplace_back(std::move(eventuality));
+                } else {
+                    log("ignore, loop end not reached : ", terminal_str);
+                }
+            } else {
+                log("transition exit known pattern : ", terminal_str);
             }
+        } else {
+            log("ignore transition : ", terminal_str);
         }
-        estimation->clear();
     }
-
-    estimation->emplace_back(
-            EstimationNode { terminal->pattern, 0, 1, LoopEstimation::from_start });
-
-    return;
 }
 
-// ----------------------------------------------------------------
+auto Estimation::update(FlowGraph const & graph, Terminal const * terminal) -> void {
+    update(&graph, terminal);
+}
 
-auto deinit_estimation(Estimation * e) -> void { e->clear(); }
+auto Estimation::update(FlowGraph const * graph, Terminal const * terminal) -> void {
+    if (terminal == nullptr) {
+        log("Update estimation with unknown terminal");
+        eventualities.clear();
+    } else {
+        log("Update estimation with '", (char const *)terminal->payload);
+        auto new_eventualities = std::vector<Eventuality> {};
+
+        for (auto & eventuality : eventualities)
+            updateEventuality(eventuality, new_eventualities, terminal);
+
+        if (new_eventualities.size() == 0) {
+            log("Restart from nowhere");
+            assert(graph != nullptr);
+            auto const entry_point = graph->get_entry_point(terminal);
+            if (entry_point != nullptr) {
+                new_eventualities.emplace_back();
+                new_eventualities.back().nodes.emplace_back(
+                        entry_point,
+                        1,
+                        RepeatFromStart::repeat_from_unknown_index);
+            }
+        } else {
+            for (auto & eventuality : new_eventualities)
+                descend(eventuality);
+        }
+
+        eventualities = std::move(new_eventualities);
+
+        log("Got ", eventualities.size(), " eventualities: ", *this);
+    }
+}
 
 // ----------------------------------------------------------------
 // Prediction
 // ----------------------------------------------------------------
 
-static auto skip_false_prediction(Prediction * p) -> bool {
-    assert(p != nullptr);
-    while (true) {
-        auto const & transitions = p->estimation.back().pattern->transitions;
+auto Prediction::reset(Estimation const & new_estimation) -> bool {
+    estimation = new_estimation;
+    return compute_transitions();
+}
 
-        if (p->transition_index >= transitions.size()) {
-            return false;
-        }
+auto Prediction::get_prediction_tree_child() -> bool {
+    auto const terminal = get_terminal();
+    log("start prediction child");
+    estimation.update(nullptr, terminal);
+    log("end prediction child");
+    return compute_transitions();
+}
 
-        auto const & transition = transitions[p->transition_index];
+auto Prediction::get_prediction_tree_sibling() -> bool {
+    if (transitions.size() <= 1)
+        return false;
+    transitions.pop_back();
+    return true;
+}
 
-        auto lck = log_lock {};
-        if (get_probability(p) > 0.) {  // TODO precompute this value if possible
-            if (p->estimation.size() <= transition.pop_count) {
-                return true;
+auto Prediction::get_probability() const -> Probability {
+    return { transitions.back().count, count };
+}
+
+auto Prediction::get_terminal() const -> Terminal const * { return transitions.back().terminal; }
+
+auto Prediction::compute_transitions() -> bool {
+    transitions.clear();
+    count = 0u;
+
+    auto insert_transition = [this](Terminal const * t, size_t c) -> void {
+        count += c;
+        for (auto & transition : transitions) {
+            if (transition.terminal == t) {
+                transition.count += c;
+                return;
             }
+        }
+        transitions.emplace_back(PredictionTransition { t, c });
+    };
 
-            auto const pattern_index = p->estimation.size() - transition.pop_count - 1;
-            auto const & destination = p->estimation[pattern_index];
+    for (auto const & eventuality : estimation.eventualities) {
+        auto const & front = &eventuality.nodes.front();
+        for (auto const & transition : eventuality.nodes.back().node->transitions) {
+            auto const destination = estimation.get_parent(eventuality, transition.pop_count);
 
-            if (destination.pattern == transition.pattern) {
-                if (is_fake_pattern(transition.pattern)) {
-                    auto const fake_pattern = as_fake_pattern(transition.pattern);
-                    if (fake_pattern->count > destination.repeat)
-                        return true;
-                } else {
-                    auto const node_index = destination.node_index;
-                    auto const & node = as_pattern(transition.pattern)->nodes[node_index];
-                    auto const stay_in_loop = transition.node_index == node_index;
-                    auto const exit_loop = transition.node_index == node_index + 1;
-                    assert(node.count >= destination.repeat);
-                    auto const max_iteration_count_reached = node.count == destination.repeat;
-
-                    if (stay_in_loop) {
-                        if (max_iteration_count_reached == false) {
-                            return true;
-                        }
-                    } else if (exit_loop) {
-                        if (destination.repeat_from_start == LoopEstimation::unknown) {
-                            return true;
-                        } else if (max_iteration_count_reached) {
-                            return true;
-                        }
+            if (destination == nullptr) {  // ascend
+                auto const loop = transition.node->son == front->node;
+                insert_transition(
+                        transition.node->first_terminal,
+                        (loop ? transition.node->repeats - 1 : 1) * transition.node->count);
+            } else if (destination->node == transition.node) {
+                if (destination->repeat < destination->node->repeats) {
+                    if (destination->repeat_from_start == RepeatFromStart::repeat_from_start) {
+                        insert_transition(transition.node->first_terminal, front->node->count);
+                    } else {
+                        insert_transition(transition.node->first_terminal,
+                                          front->node->count * (destination->node->repeats -
+                                                                destination->repeat));
                     }
+                }
+            } else if (destination->node->next == transition.node) {  // advance
+                if (destination->repeat_from_start == RepeatFromStart::repeat_from_unknown_index ||
+                    destination->repeat == destination->node->repeats) {
+                    insert_transition(transition.node->first_terminal,
+                                      front->node->count);  // TODO
                 }
             }
         }
-
-        ++p->transition_index;
-    }
-}
-
-auto reset_prediction(Prediction * p, Estimation const * e) -> bool {
-    assert(p != nullptr);
-    assert(e != nullptr);
-
-    p->transition_index = 0;
-    if (e->size() == 0) {
-        p->estimation.clear();
-        return false;
-    }
-    p->estimation = *e;
-    return skip_false_prediction(p);
-}
-
-auto copy_prediction(Prediction * to, Prediction const * from) -> void {
-    assert(to != nullptr);
-    assert(from != nullptr);
-    *to = *from;
-}
-
-auto get_prediction_tree_sibling(Prediction * p) -> bool {
-    assert(p != nullptr);
-
-    log("get tree sibling");
-
-    ++p->transition_index;
-    return skip_false_prediction(p);
-}
-
-auto get_prediction_tree_child(Prediction * p) -> bool {
-    assert(p != nullptr);
-
-    log("get tree child");
-
-    auto const transition = p->estimation.back().pattern->transitions[p->transition_index];
-    if (is_fake_pattern(transition.pattern)) {
-        assert(p->estimation.size() == 1);
-        p->estimation.clear();
-        p->estimation.emplace_back(EstimationNode { transition.pattern,
-                                                    size_t(-1),
-                                                    1,  // TODO
-                                                    LoopEstimation::unknown });
-        p->transition_index = 0u;
-        return p;
-    } else {
-        get_estimation_child(&p->estimation, transition);
-        p->transition_index = 0u;
-        return skip_false_prediction(p);
-    }
-}
-
-static auto get_current_transition(Prediction const * p) -> Transition const * {
-    return &p->estimation.back().pattern->transitions[p->transition_index];
-}
-
-auto get_terminal(Prediction const * p) -> Terminal const * {
-    auto const transition = get_current_transition(p);
-    return transition->terminal;
-}
-
-static auto compute_transition_occurence_count(Prediction const * p, size_t const index) -> size_t {
-    auto const & estimation = p->estimation.back();
-    auto const & transition = estimation.pattern->transitions[index];
-    if (p->estimation.size() > transition.pop_count) {
-        auto const & target = p->estimation[p->estimation.size() - transition.pop_count - 1];
-        assert(target.pattern == transition.pattern);
-        if (target.node_index == transition.node_index) {
-            auto const pattern_count =
-                    is_fake_pattern(transition.pattern)
-                            ? as_fake_pattern(transition.pattern)->patterns.size()
-                            : 1;
-            return transition.ocurence_count - target.repeat * pattern_count + 1;
-        }
-    }
-    return transition.ocurence_count;
-}
-
-static auto compute_transition_climb_tree_probability(Prediction const * p) -> double {
-    auto count = size_t(0u);
-    auto total_count = size_t(0u);
-
-    auto const transition_count = p->estimation.back().pattern->transitions.size();
-    for (auto transition_index = 0u; transition_index < transition_count; ++transition_index) {
-        auto const transition_count = compute_transition_occurence_count(p, transition_index);
-        total_count += transition_count;
-        if (transition_index == p->transition_index)
-            count = transition_count;
     }
 
-    auto const proba = static_cast<double>(count) / static_cast<double>(total_count);
-    assert(proba >= 0. && proba <= 1.);
-    log("proba (climb) : ", proba);
-    return proba;
+    std::sort(transitions.begin(),
+              transitions.end(),
+              [](auto const & lhs, auto const & rhs) -> bool { return lhs.count < rhs.count; });
+
+    return transitions.size() > 0;
 }
-
-auto get_probability(Prediction const * p) -> double {
-    auto const & estimation = p->estimation.back();
-    auto const & current_transition = estimation.pattern->transitions[p->transition_index];
-
-    log("get proba of '",
-        (char const *)current_transition.terminal->payload,
-        "' after ",
-        p->estimation);
-    // log("current_transition : ", current_transition);
-
-    if (p->estimation.size() <= current_transition.pop_count) {
-        return compute_transition_climb_tree_probability(p);
-    }
-
-    if (p->estimation.size() > current_transition.pop_count + 1) {
-        return 1.;
-    }
-
-    assert(p->estimation.size() - current_transition.pop_count - 1 == 0);
-    auto const & current_target = p->estimation[0];
-    assert(is_fake_pattern(estimation.pattern) ||
-           current_target.pattern == current_transition.pattern);
-
-    if (current_target.repeat_from_start == LoopEstimation::from_start) {
-        auto const node = as_pattern(current_target.pattern)->nodes[current_target.node_index];
-        if (current_target.node_index == current_transition.node_index) {
-            return node.count >= current_target.repeat ? 1 : 0;
-        } else {
-            return node.count <= current_target.repeat ? 1 : 0;
-        }
-    }
-
-    auto count = size_t(0u);
-    auto total_count = size_t(0u);
-
-    auto const transition_count = p->estimation.back().pattern->transitions.size();
-    for (auto transition_index = 0u; transition_index < transition_count; ++transition_index) {
-        auto const transition_count = compute_transition_occurence_count(p, transition_index);
-        total_count += transition_count;
-        if (transition_index == p->transition_index)
-            count = transition_count;
-    }
-
-    auto const proba = static_cast<double>(count) / static_cast<double>(total_count);
-    assert(proba >= 0. && proba <= 1.);
-    log("proba : ", proba);
-    return proba;
-}
-

@@ -27,6 +27,7 @@ static auto print_symbol(Symbol const * s, terminal_printer const & printer) -> 
 // -----------------------------------------------------------
 
 auto compare(Grammar & g, std::string const & str, terminal_printer const & printer) -> void {
+    std::cerr << "Compare with \"" << str << "\"\n";
     std::cout << std::endl;
 
     auto const trace = [&]() {
@@ -50,41 +51,49 @@ auto compare(Grammar & g, std::string const & str, terminal_printer const & prin
     }();
 
     auto e = Estimation {};
-    auto fg = buildFlowGraph(g);
+    auto fg = FlowGraph {};
+    fg.build_from(g);
 
-    init_estimation(&e, &fg);
+    // init_estimation(&e, &fg); // TODO
+    //
+    // a
+    auto constexpr max_depth = 2;
 
-    auto do_prediction = [&printer](auto rec, auto prediction, auto depth) -> void {
+    auto do_prediction = [&printer, max_depth](auto rec, auto & prediction, auto depth) -> void {
         auto first = true;
         do {
+            for (auto i = 0; i < depth; ++i)
+                std::cout << "    ";
+            std::cout << " - ";
             if (first) {
                 first = false;
-            } else
-                std::cout << ", ";
+            } else {
+                // std::cout << ", ";
+            }
 
-            print_symbol(get_terminal(prediction), printer);
-            std::cout << ' ' << static_cast<int>(get_probability(prediction) * 100.) << '%';
+            print_symbol(prediction.get_terminal(), printer);
+            auto const proba = prediction.get_probability();
+            std::cout << ' ' << proba.count << '/' << proba.total << " ("
+                      << static_cast<int>(proba.as_double() * 100.) << "%)\n";
 
-            if (depth > 0) {
-                auto child_prediction = Prediction {};
-                copy_prediction(&child_prediction, prediction);
-                if (get_prediction_tree_child(&child_prediction)) {
-                    std::cout << " (";
-                    rec(rec, &child_prediction, depth - 1);
-                    std::cout << ')';
+            if (depth < max_depth) {
+                auto child_prediction = prediction;
+                if (child_prediction.get_prediction_tree_child()) {
+                    rec(rec, child_prediction, depth + 1);
+                    // std::cout << std::endl;
                 }
             }
 
-        } while (get_prediction_tree_sibling(prediction));
+        } while (prediction.get_prediction_tree_sibling());
     };
 
     for (auto const & it : trace) {
-        update_estimation(&e, it.first);
+        e.update(fg, it.first);
         std::cout << "# Update " << it.second << std::endl;
         auto p = Prediction {};
-        if (reset_prediction(&p, &e)) {
-            std::cout << "-> Predict ";
-            do_prediction(do_prediction, &p, 2);
+        if (p.reset(e)) {  // TODO
+            std::cout << "-> Predict \n";
+            do_prediction(do_prediction, p, 0);
         }
 
         std::cout << std::endl;
