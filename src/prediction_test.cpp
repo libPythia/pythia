@@ -36,22 +36,27 @@ class Input final {
   public:
     Input() = default;
     auto operator=(Input const &) -> Input & = default;
-    Input(char size, char alphabet_size) : _str(size, 'a'), _alphabet_size(alphabet_size) {}
+    Input(char size, char alphabet_size)
+            : _str(std::string(size, 'a'))
+            , _alphabet_size(alphabet_size) {}
 
     auto next() -> std::optional<std::string> {
-        auto res = _str;
-        for (auto & c : _str) {
-            c += 1;
-            if (c < 'a' + _alphabet_size)
-                return res;
-            c = 'a';
+        if (_str.has_value()) {
+            auto res = _str;
+            for (auto i = 0u; i < _str.value().size(); ++i) {
+                auto & c = _str.value()[i];
+                c += 1;
+                if (c < 'a' + _alphabet_size && c < 'a' + char(i + 1))
+                    return res;
+                c = 'a';
+            }
+            res = std::nullopt;
         }
-        _str = "";
-        return res;
+        return std::nullopt;
     }
 
   private:
-    std::string _str;
+    std::optional<std::string> _str;
     char _alphabet_size;
 };
 
@@ -66,7 +71,7 @@ static auto output_mtx = std::mutex {};
 
 // -----------------------------------------------------------------------
 
-auto parse_args(int argc, char ** argv) -> void {
+static auto parse_args(int argc, char ** argv) -> void {
     auto parser = po::parser {};
 
     // auto & duration_opt = parser["duration"].abbreviation('d').type(po::u32).fallback(5);
@@ -116,9 +121,9 @@ auto parse_args(int argc, char ** argv) -> void {
 
 // -----------------------------------------------------------------------
 
-auto report_success(std::string const & input) {
+static auto report_success(std::string const & input) {
     ++valid_count;
-    if (settings.silent)
+    if (settings.silent || settings.print_valid == false)
         return;
     auto lock = std::unique_lock(output_mtx);
     if (!settings.no_color)
@@ -126,10 +131,11 @@ auto report_success(std::string const & input) {
     std::cout << '+' << input << ':';
     if (!settings.no_color)
         std::cout << rang::fg::reset << rang::style::reset;
-    std::cout /* << output */ << std::endl;  // TODO
+    std::cout << " ok !" << std::endl;
 }
 
-auto report_failure(std::string const & input) {
+template <typename... T>
+static auto report_failure(std::string const & input, std::string const & substr, T &&... args) {
     ++error_count;
     if (settings.silent)
         return;
@@ -139,13 +145,35 @@ auto report_failure(std::string const & input) {
         std::cout << rang::fg::red << rang::style::bold;
     if (settings.print_valid)
         std::cout << '-';
-    std::cout << input << ':';
+    std::cout << input << ':' << substr << ": ";
     if (!settings.no_color)
         std::cout << rang::fg::reset << rang::style::reset;
-    std::cout /* << output << " (" << data << ')' */ << std::endl;  // TODO
+    ((std::cout << args), ...);
+    std::cout << std::endl;
 }
 
-auto test_input(std::string const & input) -> void {
+static auto count_substring(std::string const & str, std::string const & sub, bool count_last)
+        -> size_t {
+    auto count = size_t(0);
+    auto start = 0u;
+    auto const last = count_last ? str.size() : str.size() - 1;
+    while (start + sub.size() <= last) {
+        auto ok = true;
+        for (auto i = 0u; i < sub.size(); ++i) {
+            if (str[start + i] != sub[i]) {
+                ok = false;
+                break;
+            }
+        }
+        if (ok) {
+            ++count;
+        }
+        ++start;
+    }
+    return count;
+}
+
+static auto test_input(std::string const & input) -> void {
     auto grammar = Grammar {};
     auto root = static_cast<NonTerminal *>(nullptr);
 
@@ -153,12 +181,78 @@ auto test_input(std::string const & input) -> void {
         new_terminal(grammar, reinterpret_cast<void *>(static_cast<intptr_t>(i)));
 
     for (auto c : input)
-        root = insertSymbol(grammar, root, grammar.terminals[c].get());
+        root = insertSymbol(grammar, root, grammar.terminals.at(c - 'a').get());
+
+    auto flow_graph = FlowGraph {};
+    flow_graph.build_from(grammar);
+
+    auto test_prediction = [](auto rec,
+                              std::string const & input,
+                              Prediction prediction,
+                              std::string const prediction_str) -> bool {
+        auto test = std::vector(0, settings.alphabet_size);
+
+        do {
+            auto const terminal_index =
+                    reinterpret_cast<intptr_t>(prediction.get_terminal()->payload);
+
+            auto new_prediction_str = prediction_str + char('a' + terminal_index);
+            auto const count = count_substring(input, prediction_str, false);
+            auto const new_count = count_substring(input, new_prediction_str, true);
+            auto probability = prediction.get_probability();
+
+            if (probability.total != count || probability.count != new_count) {
+                report_failure(input,
+                               new_prediction_str,
+                               " expected ",
+                               new_count,
+                               '/',
+                               count,
+                               " but found ",
+                               probability.count,
+                               '/',
+                               probability.total);
+                return false;
+            }
+
+            auto prediction_copy = prediction;
+            if (prediction_copy.get_prediction_tree_child()) {
+                if (rec(rec, input, prediction_copy, new_prediction_str) == false)
+                    return false;
+            }
+        } while (prediction.get_prediction_tree_sibling() == true);
+
+        // TODO check unlisted prediction are effectively impossible
+
+        return true;
+    };
+
+    for (auto i = 0; i < settings.alphabet_size; ++i) {
+        auto estimation = Estimation {};
+        estimation.update(flow_graph, grammar.terminals[i].get());
+        auto str = std::string {};
+        str.push_back('a' + i);
+        auto const count = count_substring(input, str, false);
+        auto prediction = Prediction {};
+        if (count == 0) {
+            if (prediction.reset(estimation))
+                report_failure(input, str, "impossible");
+            else
+                report_success(input);
+        } else {
+            if (prediction.reset(estimation)) {
+                if (test_prediction(test_prediction, input, prediction, str) == true)
+                    report_success(input);
+            } else {
+                report_failure(input, str, "No prediction from possible string");
+            }
+        }
+    }
 
     report_success(input);  // TODO
 }
 
-auto worker() -> void {
+static auto worker() -> void {
     while (true) {
         auto input = std::optional<std::string> { std::nullopt };
         {

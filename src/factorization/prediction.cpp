@@ -6,16 +6,16 @@
 
 #include "reduction.hpp"
 
-static auto getLogOutput() -> std::ostream & {
-    static auto log_output = std::ofstream { "log_output.txt" };
-    return log_output;
-}
-
-template <typename... T> static auto log(T &&... args) -> void {
-    auto & os = getLogOutput();
-    ((os << args), ...);
-    os << std::endl;
-}
+// static auto getLogOutput() -> std::ostream & {
+//     static auto log_output = std::ofstream { "log_output.txt" };
+//     return log_output;
+// }
+//
+// template <typename... T> static auto log(T &&... args) -> void {
+//     auto & os = getLogOutput();
+//     ((os << args), ...);
+//     os << std::endl;
+// }
 
 static auto operator<<(std::ostream & os, Estimation const & estimation) -> std::ostream & {
     auto first_eventuality = true;
@@ -105,12 +105,12 @@ auto Estimation::updateEventuality(Eventuality const & input,
                 auto const loop =
                         input.nodes.size() > 0 && transition.node->son == input.nodes.front().node;
                 if (loop) {
-                    log("Ascend in loop : ", terminal_str);
+                    // log("Ascend in loop : ", terminal_str);
                     new_eventuality.nodes.emplace_back(transition.node,
                                                        2,
                                                        RepeatFromStart::repeat_from_unknown_index);
                 } else {
-                    log("Ascend : ", terminal_str);
+                    // log("Ascend : ", terminal_str);
                     new_eventuality.nodes.emplace_back(transition.node,
                                                        1,
                                                        RepeatFromStart::repeat_from_start);
@@ -118,17 +118,17 @@ auto Estimation::updateEventuality(Eventuality const & input,
                 output.emplace_back(std::move(new_eventuality));
             } else if (destination->node == transition.node) {  // loop
                 if (destination->repeat < destination->node->repeats) {
-                    log("continue loop: ", terminal_str);
+                    // log("continue loop: ", terminal_str);
                     auto eventuality = duplicate(input, transition.pop_count);
                     eventuality.nodes.back().repeat += 1;
                     output.emplace_back(std::move(eventuality));
                 } else {
-                    log("ignore, end of loop reached", terminal_str);
+                    // log("ignore, end of loop reached", terminal_str);
                 }
             } else if (destination->node->next == transition.node) {  // advance
                 if (destination->repeat_from_start == RepeatFromStart::repeat_from_unknown_index ||
                     destination->repeat == destination->node->repeats) {
-                    log("reach end of loop: ", terminal_str);
+                    // log("reach end of loop: ", terminal_str);
                     auto eventuality = duplicate(input, transition.pop_count);
                     auto & node = eventuality.nodes.back();
                     node.repeat = 1;
@@ -136,13 +136,13 @@ auto Estimation::updateEventuality(Eventuality const & input,
                     node.repeat_from_start = RepeatFromStart::repeat_from_start;
                     output.emplace_back(std::move(eventuality));
                 } else {
-                    log("ignore, loop end not reached : ", terminal_str);
+                    // log("ignore, loop end not reached : ", terminal_str);
                 }
             } else {
-                log("transition exit known pattern : ", terminal_str);
+                // log("transition exit known pattern : ", terminal_str);
             }
         } else {
-            log("ignore transition : ", terminal_str);
+            // log("ignore transition : ", terminal_str);
         }
     }
 }
@@ -153,17 +153,17 @@ auto Estimation::update(FlowGraph const & graph, Terminal const * terminal) -> v
 
 auto Estimation::update(FlowGraph const * graph, Terminal const * terminal) -> void {
     if (terminal == nullptr) {
-        log("Update estimation with unknown terminal");
+        // log("Update estimation with unknown terminal");
         eventualities.clear();
     } else {
-        log("Update estimation with '", (char const *)terminal->payload);
+        // log("Update estimation with '", (char const *)terminal->payload);
         auto new_eventualities = std::vector<Eventuality> {};
 
         for (auto & eventuality : eventualities)
             updateEventuality(eventuality, new_eventualities, terminal);
 
         if (new_eventualities.size() == 0) {
-            log("Restart from nowhere");
+            // log("Restart from nowhere");
             assert(graph != nullptr);
             auto const entry_point = graph->get_entry_point(terminal);
             if (entry_point != nullptr) {
@@ -180,7 +180,7 @@ auto Estimation::update(FlowGraph const * graph, Terminal const * terminal) -> v
 
         eventualities = std::move(new_eventualities);
 
-        log("Got ", eventualities.size(), " eventualities: ", *this);
+        // log("Got ", eventualities.size(), " eventualities: ", *this);
     }
 }
 
@@ -195,9 +195,9 @@ auto Prediction::reset(Estimation const & new_estimation) -> bool {
 
 auto Prediction::get_prediction_tree_child() -> bool {
     auto const terminal = get_terminal();
-    log("start prediction child");
+    // log("start prediction child");
     estimation.update(nullptr, terminal);
-    log("end prediction child");
+    // log("end prediction child");
     return compute_transitions();
 }
 
