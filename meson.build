@@ -45,16 +45,6 @@ eta_factorizer_bench = executable('bench',
 
 #----------------------------------------------------------------
 
-eta_factorizer_exaustive_test = executable('exaustive_test',
-                                  'src/exaustive_test.cpp',
-                                  dependencies:[eta_factorizer_dep, thread_dep, utils_dep])
-
-eta_factorizer_prediction_test = executable('prediction_test',
-                                  'src/prediction_test.cpp',
-                                  dependencies:[eta_factorizer_dep, thread_dep, utils_dep])
-
-#----------------------------------------------------------------
-
 eta_exe_src = [
   'src/eta/compare.cpp',
   'src/eta/input.cpp',
@@ -80,3 +70,6 @@ pkgc.generate(eta_factorizer_lib,
   extra_cflags:['-std=c++17'],
 )
 
+#----------------------------------------------------------------
+
+subdir('test')

@@ -286,5 +286,7 @@ auto main(int argc, char ** argv) -> int {
     std::cerr << "Finished with " << error_count << " errors over " << (valid_count + error_count)
               << " tests in " << std::chrono::duration_cast<std::chrono::seconds>(duration).count()
               << "s over " << settings.thread_count << " threads." << std::endl;
+
+    return error_count == 0 ? 0 : 1;
 }
 
