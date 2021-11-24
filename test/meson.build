@@ -10,4 +10,4 @@ eta_factorizer_prediction_test = executable('prediction_test',
                                   'src/prediction_test.cpp',
                                   dependencies:[eta_factorizer_dep, thread_dep, utils_dep])
 
-test('eta_predict', eta_factorizer_prediction_test, args:['-s11', '-a5'])
+test('eta_predict', eta_factorizer_prediction_test, args:['-s9', '-a5'])
