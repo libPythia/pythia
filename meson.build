@@ -12,6 +12,7 @@ install_subdir('include/eta', install_dir:get_option('includedir'))
 thread_dep = dependency('threads')
 
 eta_core = subproject('eta_core').get_variable('eta_core_dep')
+utils_dep = declare_dependency(include_directories:['src/utils'])
 
 #----------------------------------------------------------------
 
@@ -31,17 +32,6 @@ eta_factorizer_lib = static_library('eta_factorizer',
 
 eta_factorizer_dep = declare_dependency(include_directories:['include'],
                                    link_with:[eta_factorizer_lib])
-
-#----------------------------------------------------------------
-
-utils_dep = declare_dependency(include_directories:['src/utils'])
-
-#----------------------------------------------------------------
-
-eta_factorizer_bench = executable('bench',
-                             'src/bench.cpp',
-                             dependencies:[eta_factorizer_dep, utils_dep],
-                            )
 
 #----------------------------------------------------------------
 
