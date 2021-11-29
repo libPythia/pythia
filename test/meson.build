@@ -14,6 +14,21 @@ test('eta_predict', eta_factorizer_prediction_test, args:['-s9', '-a5'], is_para
 
 #----------------------------------------------------------------
 
+value_oracle_tests=[
+  'one_value_to_predict_equal_to_default',
+  'one_value_to_predict_different_from_default',
+  'two_values_to_predict_with_separators',
+]
+
+foreach t : value_oracle_tests
+  test('value oracle ' + t,
+       executable('tstvalue_oracle_' + t, 'src/value_oracle/' + t + '.cpp',
+                  dependencies:[eta_oracle_dep]),
+       suite:'oracle')
+endforeach
+
+#----------------------------------------------------------------
+
 eta_factorizer_bench = executable('bench',
                              'src/bench.cpp',
                              dependencies:[eta_factorizer_dep, utils_dep])
