@@ -25,6 +25,7 @@ struct Payload {
 
 struct EvaluationNode {
     GrammarNode const * node;
+    int repeats;
 };
 using Evaluation = std::vector<EvaluationNode>;
 
@@ -75,15 +76,21 @@ static auto descend_evaluation(Evaluation & eval) -> void {
         auto const symbol = eval.back().node->maps_to;
         if (is_terminal(symbol))
             break;
-        eval.push_back({ as_nonterminal(symbol)->first });
+        eval.push_back({ as_nonterminal(symbol)->first, 0 });
     }
 }
 
 template <typename F> static auto next_evaluation(Evaluation eval, F && add_evaluation) {
     while (!eval.empty()) {
-        auto const next_object = eval.back().node->next;
-        if (is_node(next_object)) {
+        auto & eval_node = eval.back();
+        auto const next_object = eval_node.node->next;
+        if (++eval_node.repeats < eval_node.node->repeats) {
+            descend_evaluation(eval);
+            add_evaluation(std::move(eval));
+            return;
+        } else if (is_node(next_object)) {
             eval.back().node = as_node(next_object);
+            eval.back().repeats = 0;
             descend_evaluation(eval);
 
             add_evaluation(std::move(eval));
@@ -157,10 +164,10 @@ void eta_switch_value_oracle_to_prediction() {
     mode = Mode::Predicting;
 
     evaluations.emplace_back();
-    evaluations.back().push_back({ root->first });
+    evaluations.back().push_back({ root->first, 0 });
     descend_evaluation(evaluations.back());
 
-    print_reduced_trace(root, std::cout, [](Terminal const * t, std::ostream & os) {
+    print_grammar(grammar, std::cout, [](Terminal const * t, std::ostream & os) {
         auto const payload = reinterpret_cast<Payload const *>(t->payload);
         switch (payload->type) {
             case Payload::Type::Predict: {
