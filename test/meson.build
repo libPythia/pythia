@@ -1,13 +1,13 @@
 
 eta_factorizer_exaustive_test = executable('exaustive_test',
-                                  'src/exaustive_test.cpp',
+                                  'exaustive_test.cpp',
                                   dependencies:[eta_factorizer_dep, thread_dep, utils_dep])
 
 test('eta_reduce', eta_factorizer_exaustive_test, args:['-s10', '-a5'], is_parallel : false)
 
 
 eta_factorizer_prediction_test = executable('prediction_test',
-                                  'src/prediction_test.cpp',
+                                  'prediction_test.cpp',
                                   dependencies:[eta_factorizer_dep, thread_dep, utils_dep])
 
 test('eta_predict', eta_factorizer_prediction_test, args:['-s9', '-a5'], is_parallel : false)
@@ -30,7 +30,7 @@ value_oracle_tests=[
 
 foreach t : value_oracle_tests
   test(t,
-       executable('test_value_oracle_' + t, 'src/value_oracle/' + t + '.cpp',
+       executable('test_value_oracle_' + t, 'value_oracle/' + t + '.cpp',
                   dependencies:[eta_oracle_dep]),
        suite:'oracle')
 endforeach
@@ -38,6 +38,6 @@ endforeach
 #----------------------------------------------------------------
 
 eta_factorizer_bench = executable('bench',
-                             'src/bench.cpp',
+                             'bench.cpp',
                              dependencies:[eta_factorizer_dep, utils_dep])
 
