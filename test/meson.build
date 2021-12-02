@@ -26,11 +26,15 @@ value_oracle_tests=[
   'predict_at_end_of_loop_of_prediction',
   'predict_at_end_of_loop_with_prediction',
   'predict_at_end_of_nested_loop_with_prediction',
+  'no_prediction_to_do',
+  'predict_after_failure_simple',
+  'predict_after_failure_by_probability_1',
+  'predict_after_failure_by_probability_2',
 ]
 
 foreach t : value_oracle_tests
   test(t,
-       executable('test_value_oracle_' + t, 'value_oracle/' + t + '.cpp',
+       executable(t, 'value_oracle/' + t + '.cpp',
                   dependencies:[eta_oracle_dep]),
        suite:'oracle')
 endforeach
