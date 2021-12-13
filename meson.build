@@ -45,7 +45,6 @@ eta_oracle_lib = library('eta_oracle',
 
 eta_oracle_dep = declare_dependency(include_directories:['include'], link_with:[eta_oracle_lib])
 
-
 #----------------------------------------------------------------
 
 eta_exe_src = [

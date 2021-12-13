@@ -1,6 +1,10 @@
 #include "predict_value.h"
 
-#include <cassert>
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
 #include <eta/factorization/export.hpp>
 #include <eta/factorization/prediction.hpp>
 #include <eta/factorization/reduction.hpp>
@@ -33,12 +37,13 @@ static Grammar grammar;
 static NonTerminal * nonterminal = nullptr;
 static NonTerminal * root = nullptr;  // TODO Remove
 
-static std::vector<Payload> payloads;
+static Payload * payloads;
 static Terminal * ask_prediction = nullptr;
-static std::vector<Terminal *> predictions;
-static std::vector<Terminal *> events;
+static Terminal ** predictions;
+static Terminal ** events;
 
 static std::vector<Evaluation> evaluations;
+static char const * trace_path = nullptr;
 
 // --------------------------------------------------
 
@@ -48,10 +53,10 @@ void eta_deinit_value_oracle() {
     grammar = Grammar {};
     nonterminal = nullptr;
     root = nullptr;
-    payloads.clear();
+    free(payloads);
     ask_prediction = nullptr;
-    predictions.clear();
-    events.clear();
+    free(predictions);
+    free(events);
     evaluations.clear();
 }
 }
@@ -176,39 +181,52 @@ extern "C" {
 
 void eta_init_value_oracle_recording(unsigned int event_type_count) {
     mode = Mode::Recording;
-    // terminal payload meaning
-    // [-256, -2] => predictions
-    // -1 => ask for prediction
-    // [0,inf) => custom events
 
-    payloads.reserve(values_count + event_type_count + 1);
+    payloads = static_cast<decltype(payloads)>(
+            malloc((values_count + event_type_count + 1) * sizeof(payloads[0])));
+    auto next_payload = 0u;
 
     // Predict event
-    payloads.emplace_back();
-    ask_prediction = new_terminal(grammar, &payloads.back());
-    payloads.back().type = Payload::Type::Predict;
-    payloads.back().terminal = ask_prediction;
+    // payloads.emplace_back();
+    ask_prediction = new_terminal(grammar, &payloads[0]);
+    payloads[0].type = Payload::Type::Predict;
+    payloads[0].terminal = ask_prediction;
+    ++next_payload;
 
     // Correct prediction events
-    predictions.reserve(values_count);
+    predictions = static_cast<decltype(predictions)>(malloc(values_count * sizeof(predictions[0])));
     for (auto i = 0u; i < values_count; ++i) {
-        payloads.emplace_back();
-        predictions.push_back(new_terminal(grammar, &payloads.back()));
-        payloads.back().type = Payload::Type::Correct;
-        payloads.back().id = i;
-        payloads.back().terminal = predictions.back();
+        predictions[i] = new_terminal(grammar, &payloads[next_payload]);
+        payloads[next_payload].type = Payload::Type::Correct;
+        payloads[next_payload].id = i;
+        payloads[next_payload].terminal = predictions[i];
+        ++next_payload;
     }
 
     // Custom user event
-    events.reserve(event_type_count);
+    events = static_cast<decltype(events)>(malloc(event_type_count * sizeof(events[0])));
     for (auto i = 0u; i < event_type_count; ++i) {
-        payloads.emplace_back();
-        events.push_back(new_terminal(grammar, &payloads.back()));
-        payloads.back().type = Payload::Type::Custom;
-        payloads.back().id = i;
-        payloads.back().terminal = events.back();
+        events[i] = new_terminal(grammar, &payloads[next_payload]);
+        payloads[next_payload].type = Payload::Type::Custom;
+        payloads[next_payload].id = i;
+        payloads[next_payload].terminal = events[i];
+        ++next_payload;
     }
 };
+
+void eta_init_value_oracle(unsigned int event_type_count) {
+    auto const path = []() {
+        auto p = getenv("ETA_TRACE");
+        return (p == nullptr || strcmp(p, "") == 0) ? "trace.btr" : p;
+    }();
+
+    if (access(path, F_OK)) {
+        mode = Mode::Predicting;
+        // TODO
+    } else {
+        eta_init_value_oracle_recording(event_type_count);
+    }
+}
 
 // ---------------------------------------------------
 
@@ -230,7 +248,6 @@ void eta_switch_value_oracle_to_prediction() {
             } break;
         }
     });
-    std::cout << std::endl;
 
     evaluations.emplace_back();
     assert(nonterminal == root);
@@ -278,7 +295,6 @@ unsigned char eta_predict_value(unsigned char default_value) {
                     }
                 }
             }();
-            std::cout << "<predict=" << (int)value << '>';  // TODO
             return value;
         };
     }
@@ -297,7 +313,6 @@ void eta_correct_value_prediction(unsigned char value) {
         } break;
         case Mode::Predicting: {
             evaluations = next_evaluations(std::move(evaluations), terminal);
-            std::cout << "<correct>";
         } break;
     }
 }
@@ -313,7 +328,6 @@ void eta_append_event(unsigned int event_type) {
                 root = nonterminal;
         } break;
         case Mode::Predicting: {
-            std::cout << '[' << event_type << ']';  // TODO
             evaluations = next_evaluations(std::move(evaluations), terminal);
         } break;
     }
