@@ -100,6 +100,7 @@ class NonTerminalFactory final {
     auto new_nonterminal() -> NonTerminal *;
     auto release_nonterminal(NonTerminal * n) -> void;
     auto in_use_nonterminals() const -> std::vector<NonTerminal const *>;
+    auto in_use_nonterminals_count() const -> size_t;
     NonTerminalFactory();
 
   private:

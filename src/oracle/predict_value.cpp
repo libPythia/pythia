@@ -5,9 +5,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <eta/factorization/export.hpp>
+#include <eta/factorization/bin_file.hpp>
 #include <eta/factorization/prediction.hpp>
 #include <eta/factorization/reduction.hpp>
+#include <fstream>
 #include <iostream>
 
 // ---------------------------------------------------
@@ -15,15 +16,16 @@
 enum class Mode { Recording, Predicting };
 static auto mode = Mode::Recording;
 
-static constexpr auto values_count = 256u;  // unsigned char
+static constexpr auto values_count = 256u;
+using value_type = unsigned char;
 
 // ---------------------------------------------------
 
 struct Payload {
     enum Type { Predict, Correct, Custom };
 
-    Terminal const * terminal;
-    int id;
+    Terminal * terminal;
+    unsigned int id;
     Type type;
 };
 
@@ -33,40 +35,189 @@ struct EvaluationNode {
 };
 using Evaluation = std::vector<EvaluationNode>;
 
-static Grammar grammar;
+static Grammar * grammar;
 static NonTerminal * nonterminal = nullptr;
-static NonTerminal * root = nullptr;  // TODO Remove
+static NonTerminal const * root = nullptr;
 
-static Payload * payloads;
-static Terminal * ask_prediction = nullptr;
-static Terminal ** predictions;
-static Terminal ** events;
+namespace Payloads {
+static Payload ask_prediction;
+static Payload * predictions;
+static Payload * events;
+}  // namespace Payloads
 
 static std::vector<Evaluation> evaluations;
 static char const * trace_path = nullptr;
 
 // --------------------------------------------------
 
+static auto get_payload(Terminal const * terminal) -> Payload const * {
+    return static_cast<Payload const *>(terminal->payload);
+}
+
+static auto get_payload(Evaluation const & e) -> Payload const * {
+    return get_payload(as_terminal(e.back().node->maps_to));
+}
+
+// --------------------------------------------------
+
+static auto get_correction(value_type value) -> Payload * {
+    using namespace Payloads;
+    assert(predictions != nullptr);
+    auto const payload = &predictions[value];
+    assert(get_payload(payload->terminal) == payload);
+    assert(payload->type == Payload::Type::Correct);
+    assert(payload->id == value);
+    return payload;
+}
+
+static auto get_prediction() -> Payload * {
+    using namespace Payloads;
+    assert(get_payload(ask_prediction.terminal) == &ask_prediction);
+    assert(ask_prediction.type == Payload::Type::Predict);
+    return &ask_prediction;
+}
+
+static auto get_event(unsigned int id) -> Payload * {
+    using namespace Payloads;
+    assert(events != nullptr);
+    auto const payload = &events[id];
+    assert(get_payload(payload->terminal) == payload);
+    assert(payload->type == Payload::Type::Custom);
+    assert(payload->id == id);
+    return payload;
+}
+
+static auto init(unsigned int event_type_count) -> void {
+    using namespace Payloads;
+
+    grammar = new Grammar {};
+
+    // Predict event
+    ask_prediction.type = Payload::Type::Predict;
+
+    // Correct prediction events
+    predictions = static_cast<decltype(predictions)>(malloc(values_count * sizeof(predictions[0])));
+    for (auto i = 0u; i < values_count; ++i) {
+        predictions[i].type = Payload::Type::Correct;
+        predictions[i].id = i;
+    }
+
+    // Custom user event
+    events = static_cast<decltype(events)>(malloc(event_type_count * sizeof(events[0])));
+    for (auto i = 0u; i < event_type_count; ++i) {
+        events[i].type = Payload::Type::Custom;
+        events[i].id = i;
+    }
+
+    trace_path = []() {
+        auto p = getenv("ETA_TRACE");
+        return (p == nullptr || strcmp(p, "") == 0) ? "trace.btr" : p;
+    }();
+}
+
+static auto bind_payload_to_terminal(Payload * p, Terminal * t) -> void {
+    p->terminal = t;
+    t->payload = p;
+}
+
+static auto init_evaluation_from_start() -> void;
+
+static auto eta_init_value_oracle_predicting(unsigned int event_type_count) {
+    mode = Mode::Predicting;
+    init(event_type_count);
+
+    auto file = std::ifstream { trace_path };
+    load_bin_file(*grammar, file);
+    for (auto & terminal : grammar->terminals) {
+        auto str = static_cast<char const *>(terminal->payload);
+        unsigned int id;
+        char type;
+        sscanf(str, "%c%u", &type, &id);
+        delete str;
+        auto payload = [&]() -> Payload * {
+            switch (type) {
+                case 'P': return &Payloads::ask_prediction;
+                case 'C': {
+                    assert(id < values_count);
+                    return &Payloads::predictions[id];
+                }
+                case 'E': {
+                    assert(id < event_type_count);
+                    return &Payloads::events[id];
+                }
+            }
+            assert(false);  // unreachable
+        }();
+        assert(payload->id == id);
+        bind_payload_to_terminal(payload, terminal.get());
+    }
+
+    for (auto const nonterminal : grammar->nonterminals.in_use_nonterminals()) {
+        if (occurrences_count(nonterminal) == 0) {
+            root = nonterminal;
+            break;
+        }
+    }
+
+    init_evaluation_from_start();
+}
+
+// --------------------------------------------------
+
 extern "C" {
 
-void eta_deinit_value_oracle() {
-    grammar = Grammar {};
-    nonterminal = nullptr;
-    root = nullptr;
-    free(payloads);
-    ask_prediction = nullptr;
-    free(predictions);
-    free(events);
-    evaluations.clear();
-}
+void eta_init_value_oracle_recording(unsigned int event_type_count) {
+    mode = Mode::Recording;
+    init(event_type_count);
+
+    bind_payload_to_terminal(&Payloads::ask_prediction, new_terminal(*grammar, nullptr));
+
+    for (auto i = 0u; i < event_type_count; ++i)
+        bind_payload_to_terminal(&Payloads::events[i], new_terminal(*grammar, nullptr));
+
+    for (auto i = 0u; i < values_count; ++i)
+        bind_payload_to_terminal(&Payloads::predictions[i], new_terminal(*grammar, nullptr));
+};
+
+void eta_init_value_oracle(unsigned int event_type_count) {
+    switch ([]() {
+        auto v = getenv("ETA_MODE");
+        return (v != nullptr && strcmp(v, "PREDICT") == 0) ? Mode::Predicting : Mode::Recording;
+    }()) {
+        case Mode::Predicting: eta_init_value_oracle_predicting(event_type_count); break;
+        case Mode::Recording: eta_init_value_oracle_recording(event_type_count); break;
+    }
 }
 
 // ---------------------------------------------------
 
-static auto get_payload(Evaluation const & e) -> Payload const * {
-    auto const terminal = as_terminal(e.back().node->maps_to);
-    return static_cast<Payload const *>(terminal->payload);
+void eta_deinit_value_oracle() {
+    if (mode == Mode::Recording) {
+        auto file = std::ofstream { trace_path };
+        print_bin_file(*grammar, file, [](Terminal const * t, std::ostream & os) -> void {
+            auto const payload = get_payload(t);
+            switch (payload->type) {
+                case Payload::Type::Correct: os << 'C' << payload->id; break;
+                case Payload::Type::Custom: os << 'E' << payload->id; break;
+                case Payload::Type::Predict: os << 'P' << 0; break;
+            }
+        });
+    }
+    delete grammar;
+    nonterminal = nullptr;
+    root = nullptr;
+
+    free(Payloads::predictions);
+    free(Payloads::events);
+
+    evaluations.clear();
 }
+
+// ---------------------------------------------------
+
+}  // extern "C"
+
+// ---------------------------------------------------
 
 static auto count_possible_occurrences(Evaluation const & e) -> size_t {
     auto aux = [](auto rec, GrammarNode const * n) -> size_t {
@@ -173,86 +324,23 @@ static auto next_evaluations(std::vector<Evaluation> evals, Terminal const * ter
     return res;
 }
 
+static auto init_evaluation_from_start() -> void {
+    evaluations.emplace_back();
+    // assert(nonterminal == root);
+    evaluations.back().push_back({ root->first, 0 });
+    descend_evaluation(evaluations.back());
+}
+
 // ---------------------------------------------------
 
 extern "C" {
 
 // ---------------------------------------------------
 
-void eta_init_value_oracle_recording(unsigned int event_type_count) {
-    mode = Mode::Recording;
-
-    payloads = static_cast<decltype(payloads)>(
-            malloc((values_count + event_type_count + 1) * sizeof(payloads[0])));
-    auto next_payload = 0u;
-
-    // Predict event
-    // payloads.emplace_back();
-    ask_prediction = new_terminal(grammar, &payloads[0]);
-    payloads[0].type = Payload::Type::Predict;
-    payloads[0].terminal = ask_prediction;
-    ++next_payload;
-
-    // Correct prediction events
-    predictions = static_cast<decltype(predictions)>(malloc(values_count * sizeof(predictions[0])));
-    for (auto i = 0u; i < values_count; ++i) {
-        predictions[i] = new_terminal(grammar, &payloads[next_payload]);
-        payloads[next_payload].type = Payload::Type::Correct;
-        payloads[next_payload].id = i;
-        payloads[next_payload].terminal = predictions[i];
-        ++next_payload;
-    }
-
-    // Custom user event
-    events = static_cast<decltype(events)>(malloc(event_type_count * sizeof(events[0])));
-    for (auto i = 0u; i < event_type_count; ++i) {
-        events[i] = new_terminal(grammar, &payloads[next_payload]);
-        payloads[next_payload].type = Payload::Type::Custom;
-        payloads[next_payload].id = i;
-        payloads[next_payload].terminal = events[i];
-        ++next_payload;
-    }
-};
-
-void eta_init_value_oracle(unsigned int event_type_count) {
-    auto const path = []() {
-        auto p = getenv("ETA_TRACE");
-        return (p == nullptr || strcmp(p, "") == 0) ? "trace.btr" : p;
-    }();
-
-    if (access(path, F_OK)) {
-        mode = Mode::Predicting;
-        // TODO
-    } else {
-        eta_init_value_oracle_recording(event_type_count);
-    }
-}
-
-// ---------------------------------------------------
-
 void eta_switch_value_oracle_to_prediction() {
     assert(mode == Mode::Recording);
     mode = Mode::Predicting;
-
-    print_grammar(grammar, std::cout, [](Terminal const * t, std::ostream & os) {
-        auto const payload = reinterpret_cast<Payload const *>(t->payload);
-        switch (payload->type) {
-            case Payload::Type::Predict: {
-                os << "<predict>";
-            } break;
-            case Payload::Type::Correct: {
-                os << "<correct=" << payload->id << '>';
-            } break;
-            case Payload::Type::Custom: {
-                os << '[' << payload->id << ']';
-            } break;
-        }
-    });
-
-    evaluations.emplace_back();
-    assert(nonterminal == root);
-    evaluations.back().push_back({ root->first, 0 });
-    descend_evaluation(evaluations.back());
+    init_evaluation_from_start();
 }
 
 // ---------------------------------------------------
@@ -260,13 +348,13 @@ void eta_switch_value_oracle_to_prediction() {
 unsigned char eta_predict_value(unsigned char default_value) {
     switch (mode) {
         case Mode::Recording: {
-            nonterminal = insertSymbol(grammar, nonterminal, ask_prediction);
+            nonterminal = insertSymbol(*grammar, nonterminal, get_prediction()->terminal);
             if (root == nullptr)
                 root = nonterminal;
             return default_value;
         }
         case Mode::Predicting: {
-            evaluations = next_evaluations(std::move(evaluations), ask_prediction);
+            evaluations = next_evaluations(std::move(evaluations), get_prediction()->terminal);
 
             auto const value = [&]() -> unsigned char {
                 switch (evaluations.size()) {
@@ -304,10 +392,10 @@ unsigned char eta_predict_value(unsigned char default_value) {
 // ---------------------------------------------------
 
 void eta_correct_value_prediction(unsigned char value) {
-    auto const terminal = predictions[value];
+    auto const terminal = get_correction(value)->terminal;
     switch (mode) {
         case Mode::Recording: {
-            nonterminal = insertSymbol(grammar, nonterminal, terminal);
+            nonterminal = insertSymbol(*grammar, nonterminal, terminal);
             if (root == nullptr)
                 root = nonterminal;
         } break;
@@ -320,10 +408,10 @@ void eta_correct_value_prediction(unsigned char value) {
 // ---------------------------------------------------
 
 void eta_append_event(unsigned int event_type) {
-    auto const terminal = events[event_type];
+    auto const terminal = get_event(event_type)->terminal;
     switch (mode) {
         case Mode::Recording: {
-            nonterminal = insertSymbol(grammar, nonterminal, terminal);
+            nonterminal = insertSymbol(*grammar, nonterminal, terminal);
             if (root == nullptr)
                 root = nonterminal;
         } break;

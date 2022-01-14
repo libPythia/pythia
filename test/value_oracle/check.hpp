@@ -1,5 +1,6 @@
 #pragma once
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -12,7 +13,7 @@
                     #expr,                                           \
                     expr,                                            \
                     v);                                              \
-            exit(EXIT_FAILURE);                                      \
+            assert(false);                                           \
         }                                                            \
     } while (false)
 

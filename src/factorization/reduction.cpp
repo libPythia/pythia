@@ -119,6 +119,15 @@ auto NonTerminalFactory::release_nonterminal(NonTerminal * n) -> void {
     unused_nonterminals = n;
 }
 
+auto NonTerminalFactory::in_use_nonterminals_count() const -> size_t {
+    auto res = static_cast<size_t>(0);
+    for (auto const & data : storage)
+        for (auto const & v : data)
+            if (v.last != nullptr)
+                ++res;
+    return res;
+}
+
 auto NonTerminalFactory::in_use_nonterminals() const -> std::vector<NonTerminal const *> {
     auto res = std::vector<NonTerminal const *> {};
     res.reserve(storage.size() * chunk_size);

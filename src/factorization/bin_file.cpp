@@ -150,7 +150,7 @@ static auto load_bin_file_impl(Grammar & grammar, std::istream & is) -> void {
 
 auto print_bin_file(Grammar const & g, std::ostream & os, terminal_printer const & printer)
         -> void {
-    auto node_count = g.terminals.size() + g.nonterminals.in_use_nonterminals().size();
+    auto node_count = g.terminals.size() + g.nonterminals.in_use_nonterminals_count();
 
     // 'max' and 'max - 1' is reserved so we have one less representable value
     if (node_count <= std::numeric_limits<std::uint8_t>::max() - 2) {
