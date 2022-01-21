@@ -93,12 +93,41 @@ void print_stat(struct loop_stat * s, FILE * f) {
 }
 
 void print_stats() {
-    FILE * f = fopen("bench_loop.csv", "w");
+    FILE * f = fopen("bench_pythia.csv", "w");
     fprintf(f, "#nthreads,buffer_size,avg,min,max,count\n");
     for (int i = 0; i < nb_stats; i++) {
         print_stat(&stats[i], f);
     }
     fclose(f);
+}
+
+void bench_pythia(int * buffer, int buffer_max_size, int adaptive) {
+    int n_short_loop = 500;
+    int n_large_loop = 2;
+    int n_thread_short = 8;
+    int n_thread_large = 16;
+
+    int buffer_short_size = 1024;   // avg perf with 8th: 3.83438
+    int buffer_large_size = 65536;  // avg perf with 16th: 24.221446
+    if (buffer_large_size > buffer_max_size)
+        buffer_large_size = buffer_max_size;
+
+    int niter = 1000;
+    if (!adaptive)
+        omp_set_num_threads(n_thread_large);
+    for (int i = 0; i < niter; i++) {
+        if (adaptive)
+            omp_set_num_threads(n_thread_short);
+        for (int j = 0; j < n_short_loop; j++) {
+            short_loop(buffer, buffer_short_size);
+        }
+
+        if (adaptive)
+            omp_set_num_threads(n_thread_large);
+        for (int j = 0; j < n_large_loop; j++) {
+            short_loop(buffer, buffer_large_size);
+        }
+    }
 }
 
 int main(int argc, char ** argv) {
@@ -113,27 +142,20 @@ int main(int argc, char ** argv) {
     init_buffer(buffer, buffer_size_max);
     double t1, t2;
 
-    for (int buffer_size = 1; buffer_size < buffer_size_max; buffer_size *= 2) {
-        int niter;  // = (buffer_size_max/buffer_size);
-        if (niter < 10000)
-            niter = 10000;
-        if (buffer_size > 32768)
-            niter = 1000;
-        int nthreads = 1;
-        printf("#Buffer size: %d (niter=%d)\n", buffer_size, niter);
+    int niter = 10;
+    for (int i = 0; i < niter; i++) {
+        printf("Pliop %d\n", i);
+//        t1 = gettick();
+//        bench_pythia(buffer, buffer_size_max, 1);
+//        t2 = gettick();
+//
+//        printf("Adaptive parallelism: %lf s\n", t2 - t1);
 
-        for (nthreads = 1; nthreads <= nthreads_max; nthreads++) {
-            //      printf("%d threads\n",nthreads);
-            omp_set_num_threads(nthreads);
-            for (int i = 0; i < niter; i++) {
-                t1 = gettick();
-                short_loop(buffer, buffer_size);
-                t2 = gettick();
-                update_stats(nthreads, buffer_size, t2 - t1);
-            }
-        }
+        t1 = gettick();
+        bench_pythia(buffer, buffer_size_max, 0);
+        t2 = gettick();
+        printf("Static parallelism:   %lf s\n", t2 - t1);
     }
 
-    print_stats();
     return 0;
 }
