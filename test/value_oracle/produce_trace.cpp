@@ -18,6 +18,7 @@ static auto ef = []() {
 
 auto main() -> int {
     eta_init_value_oracle(1);
+    assert(eta_is_prediction_enabled() == false);
     for (auto i = 0; i < 100; ++i) {
         a();
         if (i % 2 == 0)

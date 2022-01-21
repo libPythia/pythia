@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+int eta_is_prediction_enabled();
+
 void eta_init_value_oracle_recording(unsigned int event_type_count);
 void eta_init_value_oracle(unsigned int event_type_count);
 // void eta_init_value_oracle_predicting(char const *);
