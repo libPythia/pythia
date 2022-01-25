@@ -29,12 +29,6 @@ struct Payload {
     Type type;
 };
 
-struct EvaluationNode {
-    GrammarNode const * node;
-    unsigned int repeats;
-};
-using Evaluation = std::vector<EvaluationNode>;
-
 static Grammar * grammar;
 static NonTerminal * nonterminal = nullptr;
 static NonTerminal const * root = nullptr;
@@ -45,7 +39,7 @@ static Payload * predictions;
 static Payload * events;
 }  // namespace Payloads
 
-static std::vector<Evaluation> evaluations;
+static Estimation estimation;
 static char const * trace_path = nullptr;
 
 // --------------------------------------------------
@@ -120,8 +114,6 @@ static auto bind_payload_to_terminal(Payload * p, Terminal * t) -> void {
     t->payload = p;
 }
 
-static auto init_evaluation_from_start() -> void;
-
 static auto eta_init_value_oracle_predicting(unsigned int event_type_count) {
     mode = Mode::Predicting;
     init(event_type_count);
@@ -159,7 +151,7 @@ static auto eta_init_value_oracle_predicting(unsigned int event_type_count) {
         }
     }
 
-    init_evaluation_from_start();
+    estimation = init_estimation_from_start(*grammar);
 }
 
 // --------------------------------------------------
@@ -212,7 +204,7 @@ void eta_deinit_value_oracle() {
     free(Payloads::predictions);
     free(Payloads::events);
 
-    evaluations.clear();
+    estimation.clear();
 }
 
 // ---------------------------------------------------
@@ -241,96 +233,14 @@ static auto count_possible_occurrences(Evaluation const & e) -> size_t {
     return (e.front().node->repeats - e.front().repeats) * aux(aux, e.front().node);
 }
 
-static auto are_equivalent(Payload const * lhs, Payload const * rhs) -> bool {
+static auto are_equivalent(Terminal const * l, Terminal const * r) -> bool {
+    auto const lhs = get_payload(l);
+    auto const rhs = get_payload(r);
     if (lhs->type != rhs->type)
         return false;
     if (lhs->type == Payload::Type::Custom)
         return lhs->id == rhs->id;
     return true;
-}
-
-static auto descend_evaluation(Evaluation & eval) -> void {
-    while (true) {
-        auto const symbol = eval.back().node->maps_to;
-        if (is_terminal(symbol))
-            break;
-        eval.push_back({ as_nonterminal(symbol)->first, 0 });
-    }
-}
-
-template <typename F>
-static auto next_evaluation_ascend(Symbol const * symbol, F && add_evaluation) -> void {
-    auto aux = [&add_evaluation](GrammarNode const * node) {
-        if (is_node(node->next)) {
-            auto eval = Evaluation { EvaluationNode { as_node(node->next), 0 } };
-            descend_evaluation(eval);
-            add_evaluation(std::move(eval));
-        } else {
-            next_evaluation_ascend(as_symbol(node->next), add_evaluation);
-        }
-    };
-    for (auto const & parent : symbol->occurrences_without_successor)
-        aux(parent);
-    for (auto const & [_, parent] : symbol->occurrences_with_successor)
-        aux(parent);
-}
-
-template <typename F> static auto next_evaluation(Evaluation eval, F && add_evaluation) -> void {
-    while (true) {
-        auto & eval_node = eval.back();
-        auto const next_object = eval_node.node->next;
-        if (++eval_node.repeats < eval_node.node->repeats) {  // in loop
-            descend_evaluation(eval);
-            add_evaluation(std::move(eval));
-            break;
-        } else if (is_node(next_object)) {  // end loop but has trivial successor
-            eval.back().node = as_node(next_object);
-            eval.back().repeats = 0;
-            descend_evaluation(eval);
-
-            add_evaluation(std::move(eval));
-            break;
-        } else if (eval.size() == 1) {  // top of eval reached : gain knowledge by exploring parents
-            next_evaluation_ascend(as_symbol(next_object), add_evaluation);
-            break;
-        } else {
-            eval.pop_back();  // use existing knowledge in order to find non trivial next
-        }
-    }
-}
-
-static auto next_evaluations(std::vector<Evaluation> evals, Terminal const * terminal)
-        -> std::vector<Evaluation> {
-    auto res = std::vector<Evaluation> {};
-    bool loose_knowledge = true;
-    for (auto & eval : evals) {
-        auto const payload = get_payload(eval);
-        if (are_equivalent(static_cast<Payload const *>(terminal->payload), payload)) {
-            loose_knowledge = false;
-            next_evaluation(std::move(eval), [&res](auto e) { res.push_back(std::move(e)); });
-        }
-    }
-
-    if (loose_knowledge) {
-        auto eval = Evaluation {};
-        for (auto const parent : terminal->occurrences_without_successor) {
-            eval.push_back(EvaluationNode { parent, 1 });
-            next_evaluation(std::move(eval), [&res](auto e) { res.push_back(std::move(e)); });
-        }
-        for (auto const & [_, parent] : terminal->occurrences_with_successor) {
-            eval.push_back(EvaluationNode { parent, 1 });
-            next_evaluation(std::move(eval), [&res](auto e) { res.push_back(std::move(e)); });
-        }
-    }
-
-    return res;
-}
-
-static auto init_evaluation_from_start() -> void {
-    evaluations.emplace_back();
-    // assert(nonterminal == root);
-    evaluations.back().push_back({ root->first, 0 });
-    descend_evaluation(evaluations.back());
 }
 
 // ---------------------------------------------------
@@ -342,7 +252,7 @@ extern "C" {
 void eta_switch_value_oracle_to_prediction() {
     assert(mode == Mode::Recording);
     mode = Mode::Predicting;
-    init_evaluation_from_start();
+    estimation = init_estimation_from_start(*grammar);
 }
 
 // ---------------------------------------------------
@@ -356,13 +266,15 @@ unsigned char eta_predict_value(unsigned char default_value) {
             return default_value;
         }
         case Mode::Predicting: {
-            evaluations = next_evaluations(std::move(evaluations), get_prediction()->terminal);
+            estimation = next_estimation(std::move(estimation),
+                                         get_prediction()->terminal,
+                                         are_equivalent);
 
             auto const value = [&]() -> unsigned char {
-                switch (evaluations.size()) {
+                switch (estimation.size()) {
                     case 0: return default_value;
                     case 1: {
-                        auto const & eval = evaluations[0];
+                        auto const & eval = estimation[0];
                         assert(get_payload(eval)->type == Payload::Type::Correct);
                         return get_payload(eval)->id;
                     }
@@ -372,7 +284,7 @@ unsigned char eta_predict_value(unsigned char default_value) {
                         for (auto & i : buf)
                             i = 0;
 
-                        for (auto const & eval : evaluations) {
+                        for (auto const & eval : estimation) {
                             assert(get_payload(eval)->type == Payload::Type::Correct);
                             auto const v = get_payload(eval)->id;
                             buf[v] += count_possible_occurrences(eval);
@@ -402,7 +314,7 @@ void eta_correct_value_prediction(unsigned char value) {
                 root = nonterminal;
         } break;
         case Mode::Predicting: {
-            evaluations = next_evaluations(std::move(evaluations), terminal);
+            estimation = next_estimation(std::move(estimation), terminal, are_equivalent);
         } break;
     }
 }
@@ -418,7 +330,7 @@ void eta_append_event(unsigned int event_type) {
                 root = nonterminal;
         } break;
         case Mode::Predicting: {
-            evaluations = next_evaluations(std::move(evaluations), terminal);
+            estimation = next_estimation(std::move(estimation), terminal, are_equivalent);
         } break;
     }
 }
