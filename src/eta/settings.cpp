@@ -30,7 +30,6 @@ static auto print_help() -> void {
                       "replay",
                       "Replay the trace and validate each event is correctly predicted using the "
                       "reduced trace.");
-    eta::print_option(0, "compare", "Give a string to compare to each input");
     eta::print_subsection("Input options");
     eta::print_option('n', "non-printable", "Don't ignore non-printable characters.");
     eta::print_option('l', "logs", "Take each line of input as an atomic item");
@@ -41,7 +40,6 @@ static auto print_help() -> void {
     eta::print_subsection("Output options");
     eta::print_option('i', "print-input", "Print input before.");
     eta::print_option('d', "dot", "Produce output under dot format.");
-    eta::print_option('F', "flow", "Output the flowgraph under dot format.");
     eta::print_option('g', "grammar", "Format output as a grammar.");
     eta::print_option('B', "binary-output", "Use binary format for output");
     eta::print_option('e', "expend", "Print original input");
@@ -75,7 +73,6 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     auto & help_opt = parser["help"].abbreviation('h');
     auto & check_opt = parser["check"].abbreviation('c');
     auto & replay_opt = parser["replay"];
-    auto & compare_opt = parser["compare"].type(po::string);
 
     // input
     auto & non_printable_opt = parser["non-printable"].abbreviation('n');
@@ -88,7 +85,6 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     // output
     auto & print_input_opt = parser["print-input"].abbreviation('i');
     auto & dot_opt = parser["dot"].abbreviation('d');
-    auto & flow_opt = parser["flow"].abbreviation('F');
     auto & grammar_opt = parser["grammar"].abbreviation('g');
     auto & binary_output_opt = parser["binary-output"].abbreviation('B');
     auto & no_color_opt = parser["no-color"];
@@ -109,7 +105,6 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     auto const check = check_opt.was_set();
     auto const no_color = no_color_opt.was_set();
     auto const replay = replay_opt.was_set();
-    auto const compare = compare_opt.was_set();
 
     // input
     auto const non_printable = non_printable_opt.was_set();
@@ -122,7 +117,6 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     // output
     auto const print_input = print_input_opt.was_set();
     auto const dot = dot_opt.was_set();
-    auto const flow = flow_opt.was_set();
     auto const grammar = grammar_opt.was_set();
     auto const binary_output = binary_output_opt.was_set();
     auto const expend = expend_opt.was_set();
@@ -138,10 +132,6 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     settings.debug = debug;
     settings.check = check;
     settings.replay = replay;
-    if (compare)
-        settings.compare = compare_opt.get().string;
-    else
-        settings.compare = "";
 
     eta::disable_colors(no_color);
 
@@ -189,11 +179,11 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
 
     // output settings
 
-    if (count_bools(dot, flow, grammar, expend, binary_output, terminals, tree, gui) > 1) {
+    if (count_bools(dot, grammar, expend, binary_output, terminals, tree, gui) > 1) {
         set_color(std::cerr, eta::color_t::red);
         std::cerr << "error: ";
         set_color(std::cerr, eta::color_t::standard);
-        std::cerr << "--dot, --flow, --expend, --grammar, --tree, --terminals"
+        std::cerr << "--dot, --expend, --grammar, --tree, --terminals"
 #ifdef ETA_GUI_ENABLED
                      ", --gui"
 #endif
@@ -208,8 +198,6 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     else if (gui)
         settings.output_mode = output_t::gui;
 #endif
-    else if (flow)
-        settings.output_mode = output_t::flow;
     else if (grammar)
         settings.output_mode = output_t::grammar;
     else if (binary_output)

@@ -20,7 +20,6 @@ enum class input_t {
 enum class output_t {
     reduced,
     dot,
-    flow,
     grammar,
     binary,
     expend,
@@ -36,7 +35,6 @@ struct settings_t final {
     bool debug;
     bool check;
     bool replay;
-    std::string compare;
 
     // input
     input_src_t input_src;

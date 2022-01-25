@@ -14,8 +14,6 @@
 #    include "imgui.h"
 #endif
 
-auto compare(Grammar & g, std::string const & str, terminal_printer const & printer) -> void;
-
 static auto print_tree(
         std::ostream & os,
         Symbol const * symbol,
@@ -109,11 +107,6 @@ auto main(int argc, char ** argv) -> int {
         case output_t::dot: {
             print_dot_file(input.grammar, std::cout, print_terminal, settings.print_input);
         } break;
-        case output_t::flow: {
-            auto fg = FlowGraph {};
-            fg.build_from(input.grammar);
-            print_flow_graph(fg, std::cout, print_terminal);
-        } break;
         case output_t::expend: {
             for (auto const thread : input.threads) {
                 print_input(thread);
@@ -189,11 +182,6 @@ auto main(int argc, char ** argv) -> int {
             });
         } break;
 #endif
-    }
-
-    if (settings.compare != "") {
-        compare(input.grammar, settings.compare, print_terminal);
-        std::cout << std::endl;
     }
 }
 

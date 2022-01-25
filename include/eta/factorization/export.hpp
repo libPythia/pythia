@@ -22,4 +22,3 @@ auto print_dot_file_end(std::ostream &) -> void;
 auto print_dot_file(Grammar const &, std::ostream &, terminal_printer const &, bool print_input)
         -> void;
 
-auto print_flow_graph(FlowGraph const &, std::ostream &, terminal_printer const &) -> void;

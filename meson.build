@@ -20,7 +20,6 @@ eta_factorizer_src = [
     'src/factorization/bin_file.cpp',
     'src/factorization/check.cpp',
     'src/factorization/export.cpp',
-    'src/factorization/flow_graph.cpp',
     'src/factorization/prediction.cpp',
     'src/factorization/reduction.cpp',
 ]
@@ -48,7 +47,6 @@ eta_oracle_dep = declare_dependency(include_directories:['include'], link_with:[
 #----------------------------------------------------------------
 
 eta_exe_src = [
-  'src/eta/compare.cpp',
   'src/eta/input.cpp',
   'src/eta/main.cpp',
   'src/eta/settings.cpp',
