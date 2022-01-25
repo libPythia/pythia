@@ -29,18 +29,18 @@ foreach t : value_oracle_tests
   test(t,
        executable(t, 'value_oracle/' + t + '.cpp',
                   dependencies:[eta_oracle_dep]),
-       suite:'oracle')
+       suite:'value_oracle')
 endforeach
 
 test('produce trace',
      executable('procuce_trace', 'value_oracle/produce_trace.cpp', dependencies:[eta_oracle_dep]),
-     suite:'oracle',
+     suite:'value_oracle',
      is_parallel: false,
      priority: 0) # Must be executed BEFORE 'consume trace'
 
 test('consume_trace',
      executable('consume_trace', 'value_oracle/consume_trace.cpp', dependencies:[eta_oracle_dep]),
-     suite:'oracle',
+     suite:'value_oracle',
      is_parallel: false,
      priority: -1,
      env:['ETA_MODE=PREDICT']) # Must be executed AFTER 'produce trace'
