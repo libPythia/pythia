@@ -37,6 +37,7 @@ eta_factorizer_dep = declare_dependency(include_directories:['include'],
 eta_oracle_lib = library('eta_oracle',
   [
     'src/oracle/predict_value.cpp',
+    'src/oracle/delta_time.cpp',
   ],
   dependencies:[eta_factorizer_dep],
   include_directories:['include/eta/oracle'],

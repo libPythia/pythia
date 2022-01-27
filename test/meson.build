@@ -27,20 +27,46 @@ value_oracle_tests=[
 
 foreach t : value_oracle_tests
   test(t,
-       executable(t, 'value_oracle/' + t + '.cpp',
+       executable('value_oracle_' + t, 'value_oracle/' + t + '.cpp',
                   dependencies:[eta_oracle_dep]),
        suite:'value_oracle')
 endforeach
 
 test('produce trace',
-     executable('procuce_trace', 'value_oracle/produce_trace.cpp', dependencies:[eta_oracle_dep]),
+     executable('value_oracle_procuce_trace', 'value_oracle/produce_trace.cpp', dependencies:[eta_oracle_dep]),
      suite:'value_oracle',
      is_parallel: false,
      priority: 0) # Must be executed BEFORE 'consume trace'
 
 test('consume_trace',
-     executable('consume_trace', 'value_oracle/consume_trace.cpp', dependencies:[eta_oracle_dep]),
+     executable('value_oracle_consume_trace', 'value_oracle/consume_trace.cpp', dependencies:[eta_oracle_dep]),
      suite:'value_oracle',
+     is_parallel: false,
+     priority: -1,
+     env:['ETA_MODE=PREDICT']) # Must be executed AFTER 'produce trace'
+
+#----------------------------------------------------------------
+
+delta_time_oracle_test=[
+  'basic',
+]
+
+foreach t : delta_time_oracle_test
+  test(t,
+       executable('dt_oracle_' + t, 'delta_time_oracle/' + t + '.cpp',
+                  dependencies:[eta_oracle_dep]),
+       suite:'delta_time_oracle')
+endforeach
+
+test('produce trace',
+     executable('dt_oracle_procuce_trace', 'delta_time_oracle/produce_trace.cpp', dependencies:[eta_oracle_dep]),
+     suite:'delta_time_oracle',
+     is_parallel: false,
+     priority: 0) # Must be executed BEFORE 'consume trace'
+
+test('consume_trace',
+     executable('dt_oracle_consume_trace', 'delta_time_oracle/consume_trace.cpp', dependencies:[eta_oracle_dep]),
+     suite:'delta_time_oracle',
      is_parallel: false,
      priority: -1,
      env:['ETA_MODE=PREDICT']) # Must be executed AFTER 'produce trace'

@@ -118,8 +118,10 @@ static auto eta_init_value_oracle_predicting(unsigned int event_type_count) {
     mode = Mode::Predicting;
     init(event_type_count);
 
-    auto file = std::ifstream { trace_path };
-    load_bin_file(*grammar, file);
+    {
+        auto file = std::ifstream { trace_path };
+        load_bin_file(*grammar, file);
+    }
     for (auto & terminal : grammar->terminals) {
         auto str = static_cast<char const *>(terminal->payload);
         unsigned int id;
