@@ -43,6 +43,7 @@ template <> struct std::hash<std::pair<size_t, size_t>> {
 // ---------------------------------------------------
 
 enum class Mode {
+    Disabled,
     Predicting,
     Recording,
     PredictingForTest,
@@ -250,7 +251,15 @@ extern "C" {
 
 // ---------------------------------------------------
 
-int eta_dt_oracle_is_prediction_enabled() { return mode != Mode::Recording; }
+int eta_dt_oracle_is_prediction_enabled() {
+    switch (mode) {
+        case Mode::Disabled: return false;
+        case Mode::Predicting: return true;
+        case Mode::PredictingForTest: return true;
+        case Mode::Recording: return false;
+    }
+    assert(false);
+}
 
 void eta_dt_oracle_init(unsigned int event_type_count) {
     assert(predicting_data == nullptr);
@@ -258,17 +267,30 @@ void eta_dt_oracle_init(unsigned int event_type_count) {
 
     switch ([]() {
         auto v = getenv("ETA_MODE");
-        return (v != nullptr && strcmp(v, "PREDICT") == 0) ? Mode::Predicting : Mode::Recording;
+        if (v != nullptr) {
+            if (strcmp(v, "PREDICT") == 0)
+                return Mode::Predicting;
+            else if (strcmp(v, "RECORD") == 0)
+                return Mode::Recording;
+        }
+        return Mode::Disabled;
     }()) {
+        case Mode::Disabled: {
+            mode = Mode::Disabled;
+            predicting_data = nullptr;
+            recording_data = nullptr;
+        } break;
         case Mode::Predicting: {
             mode = Mode::Predicting;
             predicting_data = new PredictingData {};
+            recording_data = nullptr;
             import_trace();
             predicting_data->estimation = init_estimation_from_start(predicting_data->grammar);
         } break;
         case Mode::Recording: {
             mode = Mode::Recording;
             recording_data = new RecordingData {};
+            predicting_data = nullptr;
             while (recording_data->grammar.terminals.size() < event_type_count)
                 new_terminal(recording_data->grammar,
                              (void *)uintptr_t(recording_data->grammar.terminals.size()));
@@ -302,17 +324,22 @@ void eta_dt_oracle_deinit() {
 }
 
 void eta_dt_oracle_add_event(unsigned int event_id) {
-    if (mode == Mode::Recording) {
-        assert(recording_data != nullptr);
-        recording_data->root = insertSymbol(recording_data->grammar,
-                                            recording_data->root,
-                                            get_terminal(recording_data->grammar, event_id));
-        recording_data->timestamps.push_back(get_timestamp());
-    } else {
-        assert(predicting_data != nullptr);
-        predicting_data->estimation =
-                next_estimation(std::move(predicting_data->estimation),
-                                get_terminal(predicting_data->grammar, event_id));
+    switch (mode) {
+        case Mode::Disabled: break;
+        case Mode::Recording: {
+            assert(recording_data != nullptr);
+            recording_data->root = insertSymbol(recording_data->grammar,
+                                                recording_data->root,
+                                                get_terminal(recording_data->grammar, event_id));
+            recording_data->timestamps.push_back(get_timestamp());
+        } break;
+        case Mode::Predicting:
+        case Mode::PredictingForTest: {
+            assert(predicting_data != nullptr);
+            predicting_data->estimation =
+                    next_estimation(std::move(predicting_data->estimation),
+                                    get_terminal(predicting_data->grammar, event_id));
+        } break;
     }
 }
 
