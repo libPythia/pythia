@@ -251,6 +251,8 @@ extern "C" {
 
 // ---------------------------------------------------
 
+int eta_dt_oracle_is_active() { return mode != Mode::Disabled; }
+
 int eta_dt_oracle_is_prediction_enabled() {
     switch (mode) {
         case Mode::Disabled: return false;

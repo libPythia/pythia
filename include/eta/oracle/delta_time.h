@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+int eta_dt_oracle_is_active();
 int eta_dt_oracle_is_prediction_enabled();
 
 void eta_dt_oracle_init(unsigned int event_type_count);
