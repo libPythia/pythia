@@ -125,7 +125,7 @@ void bench_pythia(int * buffer, int buffer_max_size, int adaptive) {
         if (adaptive)
             omp_set_num_threads(n_thread_large);
         for (int j = 0; j < n_large_loop; j++) {
-            short_loop(buffer, buffer_large_size);
+            large_loop(buffer, buffer_large_size);
         }
     }
 }
