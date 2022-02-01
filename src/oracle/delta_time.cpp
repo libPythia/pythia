@@ -348,10 +348,16 @@ void eta_dt_oracle_add_event(unsigned int event_id) {
 void eta_dt_oracle_get_prediction(eta_dt_oracle_prediction * prediction) {
     assert(predicting_data != nullptr);
     auto const & measure = predicting_data->delta_times[predicting_data->estimation[0]];
-    auto const dt_ns = static_cast<double>(measure.total) / static_cast<double>(measure.count);
-    prediction->dt = dt_ns * 1e-9;
-    prediction->type =
-            (uintptr_t)as_terminal(predicting_data->estimation[0].back().node->maps_to)->payload;
+    if (measure.count > 0) {
+        auto const dt_ns = static_cast<double>(measure.total) / static_cast<double>(measure.count);
+        prediction->dt = dt_ns * 1e-9;
+        prediction->type =
+                (uintptr_t)as_terminal(predicting_data->estimation[0].back().node->maps_to)
+                        ->payload;
+    } else {
+        prediction->dt = 0;
+        prediction->type = -1;
+    }
 }
 
 // ---------------------------------------------------

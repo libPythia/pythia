@@ -14,7 +14,7 @@ void eta_dt_oracle_deinit();
 
 struct eta_dt_oracle_prediction {
     double dt;
-    unsigned int type;
+    int type;
 };
 
 void eta_dt_oracle_add_event(unsigned int);
