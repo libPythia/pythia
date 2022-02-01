@@ -144,7 +144,7 @@ auto main(int argc, char ** argv) -> int {
                 auto i = 0u;
                 while (i < trace_size) {
                     ++trace[i];
-                    if (trace[i] == 'a' + std::min(alphabet_size, i + 1u)) {
+                    if (trace[i] == char('a' + std::min(alphabet_size, i + 1u))) {
                         trace[i] = 'a';
                         ++i;
                     } else

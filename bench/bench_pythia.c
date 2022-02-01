@@ -62,6 +62,8 @@ struct loop_stat * find_stat(int nthreads, int buffer_size) {
     stats[nb_stats - 1].max_duration = 0;
     stats[nb_stats - 1].total_duration = 0;
     stats[nb_stats - 1].nb_samples = 0;
+
+    return stats;
 }
 
 void update_stats(int nthreads, int buffer_size, double duration) {
@@ -130,7 +132,7 @@ void bench_pythia(int * buffer, int buffer_max_size, int adaptive) {
     }
 }
 
-int main(int argc, char ** argv) {
+int main() {
     int buffer_size_max = 1024 * 1024;
     // int buffer_size_max = 128;
     int nthreads_max = 16;

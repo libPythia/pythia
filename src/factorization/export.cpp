@@ -176,7 +176,7 @@ auto print_dot_file_begin(std::ostream & os) -> void {
 auto print_dot_file_grammar(Grammar const & g,
                             std::ostream & os,
                             terminal_printer const & p,
-                            bool print_input) -> void {
+                            bool /*print_input*/) -> void {
     auto const non_terminals_names = build_non_terminal_names(g);
     auto const non_terminals = g.nonterminals.in_use_nonterminals();
     static auto next_prefix = 0;
