@@ -147,11 +147,11 @@ int main() {
     int niter = 10;
     for (int i = 0; i < niter; i++) {
         printf("Pliop %d\n", i);
-//        t1 = gettick();
-//        bench_pythia(buffer, buffer_size_max, 1);
-//        t2 = gettick();
-//
-//        printf("Adaptive parallelism: %lf s\n", t2 - t1);
+        //        t1 = gettick();
+        //        bench_pythia(buffer, buffer_size_max, 1);
+        //        t2 = gettick();
+        //
+        //        printf("Adaptive parallelism: %lf s\n", t2 - t1);
 
         t1 = gettick();
         bench_pythia(buffer, buffer_size_max, 0);
