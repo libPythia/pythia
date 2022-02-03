@@ -130,7 +130,7 @@ static auto compute_deltas(Grammar const & grammar, Timestamps timestamps) -> De
 
 static auto get_trace_path() -> std::pair<std::string, std::string> {
     auto const p = getenv("ETA_TRACE");
-    auto path = std::string { (p == nullptr || strcpy(p, "") == 0) ? "trace" : p };
+    auto path = std::string { (p == nullptr || strcmp(p, "") == 0) ? "trace" : p };
     return { path + "_grammar.btr", path + "_dts.bin" };
 }
 
