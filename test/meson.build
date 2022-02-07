@@ -47,31 +47,50 @@ test('consume_trace',
 
 #----------------------------------------------------------------
 
-delta_time_oracle_test=[
-  'basic',
-]
+test('basic_test',
+     executable('dt_oracle_basic',
+                'delta_time_oracle/basic.cpp',
+                dependencies:[eta_oracle_dep]),
+     suite:'delta_time_oracle',
+     priority: 10, # Must be executed first
+     env:['ETA_MODE=RECORD'])
 
-foreach t : delta_time_oracle_test
+test('produce trace',
+     executable('dt_oracle_procuce_trace',
+                'delta_time_oracle/produce_trace.cpp',
+                dependencies:[eta_oracle_dep]),
+     suite:'delta_time_oracle',
+     is_parallel: false,
+     priority: 5, # Must be executed BEFORE 'consume trace'
+     env:['ETA_MODE=RECORD'])
+
+test('consume_trace',
+     executable('dt_oracle_consume_trace',
+                'delta_time_oracle/consume_trace.cpp',
+                dependencies:[eta_oracle_dep]),
+     suite:'delta_time_oracle',
+     is_parallel: false,
+     priority: 4, # Must be executed AFTER 'produce trace'
+     env:['ETA_MODE=PREDICT'])
+
+test('produce_trace_for_other_tests',
+    executable('dt_oracle_produce_trace_for_tests',
+               'delta_time_oracle/produce_trace_for_other_tests.cpp',
+               dependencies:[eta_oracle_dep]),
+    suite:'delta_time_oracle',
+    is_parallel: false,
+    priority: 3, # Must be executed after produce_trace and consume_trace and before
+                 # all the other tests
+    env:['ETA_MODE=RECORD'])
+
+foreach t : ['branching', 'variation', 'too_much_loops']
   test(t,
        executable('dt_oracle_' + t, 'delta_time_oracle/' + t + '.cpp',
                   dependencies:[eta_oracle_dep]),
        suite:'delta_time_oracle',
-       env:['ETA_MODE=RECORD'])
+       priority: 0, # Must be executed last
+       env:['ETA_MODE=PREDICT'])
 endforeach
-
-test('produce trace',
-     executable('dt_oracle_procuce_trace', 'delta_time_oracle/produce_trace.cpp', dependencies:[eta_oracle_dep]),
-     suite:'delta_time_oracle',
-     is_parallel: false,
-     priority: 0, # Must be executed BEFORE 'consume trace'
-     env:['ETA_MODE=RECORD'])
-
-test('consume_trace',
-     executable('dt_oracle_consume_trace', 'delta_time_oracle/consume_trace.cpp', dependencies:[eta_oracle_dep]),
-     suite:'delta_time_oracle',
-     is_parallel: false,
-     priority: -1, # Must be executed AFTER 'produce trace'
-     env:['ETA_MODE=PREDICT'])
 
 #----------------------------------------------------------------
 

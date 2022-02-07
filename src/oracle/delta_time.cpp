@@ -10,6 +10,7 @@
 #include <eta/factorization/prediction.hpp>
 #include <eta/factorization/reduction.hpp>
 #include <fstream>
+#include <iostream>  // TODO
 #include <string>
 #include <unordered_map>
 
@@ -100,7 +101,7 @@ static auto add_all_subpath(DeltaTimes & dts, Evaluation eval, size_t dt) -> voi
         auto & entry = dts[eval];
         ++entry.count;
         entry.total += dt;
-        eval.pop_back();
+        eval.erase(eval.begin());
     }
 }
 
@@ -153,6 +154,8 @@ template <typename Insert> static auto build_node_index(Grammar & grammar, Inser
 // path_size node_indices... cumulated_duration_ns call_count
 // ...
 
+static auto constexpr print_export_debug = false;
+
 static auto export_trace() -> void {
     assert(mode == Mode::Recording);
     assert(recording_data != nullptr);
@@ -180,17 +183,25 @@ static auto export_trace() -> void {
         dts_file.write(reinterpret_cast<char const *>(&arg), sizeof(arg));
     };
 
+    if constexpr (print_export_debug)
+        std::cout << "Path count: " << dts.size() << std::endl;
     write(dts.size());
     for (auto const & [path, stats] : dts) {
+        if constexpr (print_export_debug)
+            std::cout << "[size " << path.size() << ']';
         write(path.size());
         for (auto const & step : path) {
             auto const & node_indices = node_table[step.node];
+            if constexpr (print_export_debug)
+                std::cout << ' ' << node_indices.first << ':' << node_indices.second;
             write(node_indices.first);
             write(node_indices.second);
             // step.repeats // TODO
         }
         write(stats.total);
         write(stats.count);
+        if constexpr (print_export_debug)
+            std::cout << " - " << stats.total << '/' << stats.count << std::endl;
     }
 }
 
@@ -229,19 +240,27 @@ static auto import_trace() -> void {
 
     auto const path_count = read();
     predicting_data->delta_times.reserve(path_count);
+    if constexpr (print_export_debug)
+        std::cout << "Path count: " << path_count << std::endl;
 
     for (auto path_index = 0u; path_index < path_count; ++path_index) {
         auto const path_size = read();
+        if constexpr (print_export_debug)
+            std::cout << "[size " << path_size << ']';
         auto eval = Evaluation {};
         for (auto step_index = 0u; step_index < path_size; ++step_index) {
             auto const nonterminal_index = read();
             auto const node_index = read();
+            if constexpr (print_export_debug)
+                std::cout << ' ' << nonterminal_index << ':' << node_index;
             eval.push_back(EvaluationNode { node_table[std::pair { nonterminal_index, node_index }],
                                             0u });  // TODO
         }
         auto & stats = predicting_data->delta_times[eval];
         stats.total = read();
         stats.count = read();
+        if constexpr (print_export_debug)
+            std::cout << " - " << stats.total << '/' << stats.count << std::endl;
     }
 }
 
@@ -347,17 +366,25 @@ void eta_dt_oracle_add_event(unsigned int event_id) {
 
 void eta_dt_oracle_get_prediction(eta_dt_oracle_prediction * prediction) {
     assert(predicting_data != nullptr);
-    auto const & measure = predicting_data->delta_times[predicting_data->estimation[0]];
-    if (measure.count > 0) {
-        auto const dt_ns = static_cast<double>(measure.total) / static_cast<double>(measure.count);
-        prediction->dt = dt_ns * 1e-9;
-        prediction->type =
-                (uintptr_t)as_terminal(predicting_data->estimation[0].back().node->maps_to)
-                        ->payload;
-    } else {
-        prediction->dt = 0;
-        prediction->type = -1;
+    if (predicting_data->estimation.size() > 0) {
+        auto const & first_estimation = predicting_data->estimation[0];
+        auto const it = predicting_data->delta_times.find(first_estimation);
+        if (it != predicting_data->delta_times.end()) {
+            auto const & measure = it->second;
+            if (measure.count > 0) {
+                auto const dt_ns =
+                        static_cast<double>(measure.total) / static_cast<double>(measure.count);
+                prediction->dt = dt_ns * 1e-9;
+                prediction->type =
+                        (uintptr_t)as_terminal(predicting_data->estimation[0].back().node->maps_to)
+                                ->payload;
+
+                return;
+            }
+        }
     }
+    prediction->dt = 0;
+    prediction->type = -1;
 }
 
 // ---------------------------------------------------
