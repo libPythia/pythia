@@ -11,6 +11,9 @@ install_subdir('include/eta', install_dir:get_option('includedir'))
 
 thread_dep = dependency('threads')
 
+cc = meson.get_compiler('c')
+dl_dep = cc.find_library('dl', required : true) 
+
 eta_core = subproject('eta_core').get_variable('eta_core_dep')
 utils_dep = declare_dependency(include_directories:['src/utils'])
 
@@ -44,6 +47,15 @@ eta_oracle_lib = library('eta_oracle',
   install:true)
 
 eta_oracle_dep = declare_dependency(include_directories:['include'], link_with:[eta_oracle_lib])
+
+#----------------------------------------------------------------
+
+eta_allocator = library('eta_allocator',
+    ['src/allocator/main.cpp'],
+    dependencies:[eta_factorizer_dep, dl_dep],
+    install:true)
+
+eta_test_allocator = executable('eta_test_allocator', 'test/test_allocator.cpp')
 
 #----------------------------------------------------------------
 
