@@ -29,6 +29,17 @@ auto next_estimation(Estimation estimation,
 
 // --------------------------------------------------
 
+struct Prediction {
+    Estimation estimation;
+    unsigned int index;
+};
+auto get_prediction_from_estimation(Estimation & e) -> Prediction;
+auto get_first_next(Prediction *) -> bool;
+auto get_alternative(Prediction *) -> bool;
+auto get_terminal(Prediction const &) -> Terminal const *;
+
+// --------------------------------------------------
+
 struct Probability {
     size_t count;
     size_t total;

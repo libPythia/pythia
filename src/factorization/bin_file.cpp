@@ -91,7 +91,8 @@ static auto print_bin_file_impl(Grammar const & g,
 }
 
 template <typename bin_size_t>
-static auto load_bin_file_impl(Grammar & grammar, std::istream & is) -> void {
+static auto load_bin_file_impl(Grammar & grammar, std::istream & is, terminal_reader const & reader)
+        -> void {
     auto const terminals_count = read_nb<bin_size_t>(is);
     auto const nonterminals_count = read_nb<bin_size_t>(is);
 
@@ -99,10 +100,7 @@ static auto load_bin_file_impl(Grammar & grammar, std::istream & is) -> void {
 
     for (auto i = 0u; i < terminals_count; ++i) {
         auto const size = read_nb<bin_size_t>(is);
-        auto name = static_cast<char *>(malloc(size + 1));
-        is.read(name, size);
-        name[size] = '\0';
-        auto const terminal = new_terminal(grammar, name);
+        auto const terminal = new_terminal(grammar, reader(is, size));
         symbols[i] = terminal;
     }
 
@@ -168,12 +166,24 @@ auto print_bin_file(Grammar const & g, std::ostream & os, terminal_printer const
     }
 }
 
-auto load_bin_file(Grammar & grammar, std::istream & is) -> void {
-    switch (read_nb<std::uint8_t>(is)) {
-        case 1: load_bin_file_impl<std::uint8_t>(grammar, is); break;
-        case 2: load_bin_file_impl<std::uint16_t>(grammar, is); break;
-        case 3: load_bin_file_impl<std::uint32_t>(grammar, is); break;
-        case 4: load_bin_file_impl<std::uint64_t>(grammar, is); break;
+auto load_bin_file(Grammar & grammar, std::istream & is, terminal_reader const & reader) -> void {
+    auto const int_size = read_nb<std::uint8_t>(is);
+    switch (int_size) {
+        case 1: load_bin_file_impl<std::uint8_t>(grammar, is, reader); break;
+        case 2: load_bin_file_impl<std::uint16_t>(grammar, is, reader); break;
+        case 3: load_bin_file_impl<std::uint32_t>(grammar, is, reader); break;
+        case 4: load_bin_file_impl<std::uint64_t>(grammar, is, reader); break;
         default: assert(false);
     }
 }
+
+auto load_bin_file(Grammar & grammar, std::istream & is) -> void {
+    auto reader = [](std::istream & is, size_t size) -> void * {
+        auto ptr = static_cast<char *>(malloc((size + 1) * sizeof(char)));
+        is.read(ptr, size);
+        ptr[size] = '\0';
+        return ptr;
+    };
+    load_bin_file(grammar, is, reader);
+}
+

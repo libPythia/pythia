@@ -111,3 +111,24 @@ auto next_estimation(Estimation estimation,
 
 // -------------------------------------------
 
+auto get_prediction_from_estimation(Estimation & e) -> Prediction { return Prediction { e, 0u }; }
+
+auto get_first_next(Prediction * p) -> bool {
+    assert(p->index < p->estimation.size());
+    auto last_estimation = std::move(p->estimation[p->index]);
+    p->estimation.clear();
+    next_evaluation(last_estimation, [p](auto e) { p->estimation.push_back(std::move(e)); });
+    return p->estimation.size() > 0;
+}
+
+auto get_alternative(Prediction * p) -> bool {
+    ++p->index;
+    return p->index < p->estimation.size();
+}
+
+auto get_terminal(Prediction const & p) -> Terminal const * {
+    assert(p.index < p.estimation.size());
+    return as_terminal(p.estimation[p.index].back().node->maps_to);
+}
+
+// -------------------------------------------

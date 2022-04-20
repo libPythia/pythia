@@ -51,7 +51,14 @@ eta_oracle_dep = declare_dependency(include_directories:['include'], link_with:[
 #----------------------------------------------------------------
 
 eta_allocator = library('eta_allocator',
-    ['src/allocator/main.cpp'],
+    [
+      'src/allocator/allocator.cpp',
+      'src/allocator/interceptor.cpp',
+      'src/allocator/prediction.cpp',
+      'src/allocator/settings.cpp',
+      'src/allocator/thread_id.cpp',
+      'src/allocator/tmp_allocator.cpp',
+    ],
     dependencies:[eta_factorizer_dep, dl_dep],
     install:true)
 
