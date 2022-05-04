@@ -33,7 +33,7 @@ struct Prediction {
     Estimation estimation;
     unsigned int index;
 };
-auto get_prediction_from_estimation(Estimation & e) -> Prediction;
+auto get_prediction_from_estimation(Estimation const & e) -> Prediction;
 auto get_first_next(Prediction *) -> bool;
 auto get_alternative(Prediction *) -> bool;
 auto get_terminal(Prediction const &) -> Terminal const *;

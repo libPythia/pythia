@@ -15,5 +15,5 @@ struct Settings final {
     char const * extension;
 };
 
-auto get_settings() -> Settings;
+auto get_settings() -> Settings const *;
 

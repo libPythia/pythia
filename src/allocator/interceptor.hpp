@@ -27,8 +27,8 @@ struct FunctionPointers {
 
     int allocation_record_output;
 
-    auto init(Settings const &) -> void;
-    auto deinit(Settings const &) -> void;
+    auto init(Settings const *) -> void;
+    auto deinit(Settings const *) -> void;
 };
 
 inline FunctionPointers fn_ptr;

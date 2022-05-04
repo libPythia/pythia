@@ -2,6 +2,9 @@
 
 #include <eta/factorization/reduction.hpp>
 #include <iosfwd>
+
+#include "allocator.hpp"
+
 enum class Operation {
     Allocation,
     Deallocation,

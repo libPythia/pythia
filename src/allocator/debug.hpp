@@ -5,13 +5,19 @@
 
 #include "thread_id.hpp"
 
-#define check(x)                                                                     \
-    do {                                                                             \
-        if (!(x)) {                                                                  \
-            fprintf(stderr, "'%s' check failed at %s:%d\n", #x, __FILE__, __LINE__); \
-            abort();                                                                 \
-        }                                                                            \
-    } while (false);
+#if 0
+#    define check(x)                                                                     \
+        do {                                                                             \
+            if (!(x)) {                                                                  \
+                fprintf(stderr, "'%s' check failed at %s:%d\n", #x, __FILE__, __LINE__); \
+                abort();                                                                 \
+            }                                                                            \
+        } while (false);
+#else
+#    define check(x) \
+        do {         \
+        } while (false)
+#endif
 
 #if 0
 #    define log(x)                                                    \

@@ -28,11 +28,11 @@ static auto lib_status = LibStatus::Uninitialized;
 
 // ---------------------------------------------------
 
-static thread_local auto recursion_count = 0;
+static thread_local auto recursion_count = 1;
 
 // ---------------------------------------------------
 
-auto FunctionPointers::init(Settings const & settings) -> void {
+auto FunctionPointers::init(Settings const * settings) -> void {
     log_fn;
 
     fn_ptr._calloc = (void * (*)(size_t, size_t))dlsym(RTLD_NEXT, "calloc");
@@ -40,14 +40,14 @@ auto FunctionPointers::init(Settings const & settings) -> void {
     fn_ptr._realloc = (void * (*)(void *, size_t))dlsym(RTLD_NEXT, "realloc");
     fn_ptr._free = (void (*)(void *))dlsym(RTLD_NEXT, "free");
 
-    if (settings.record_allocations) {
+    if (settings->record_allocations) {
         log(fn_ptr::init record);
         calloc = &calloc_rec_mem;
         malloc = &malloc_rec_mem;
         free = &free_rec_mem;
         realloc = &realloc_rec_mem;
 
-        allocation_record_output = open(settings.allocations_file, O_CREAT | O_TRUNC | O_WRONLY);
+        allocation_record_output = open(settings->allocations_file, O_CREAT | O_TRUNC | O_WRONLY);
         check(allocation_record_output >= 0);
     } else {
         log(fn_ptr::init dont record);
@@ -60,9 +60,9 @@ auto FunctionPointers::init(Settings const & settings) -> void {
     }
 }
 
-auto FunctionPointers::deinit(Settings const & settings) -> void {
+auto FunctionPointers::deinit(Settings const * settings) -> void {
     log_fn;
-    if (settings.record_allocations)
+    if (settings->record_allocations)
         close(allocation_record_output);
 }
 
@@ -105,16 +105,44 @@ void * FunctionPointers::realloc_rec_mem(void * ptr, size_t size) {
 
 static void init() {
     log_fn;
-    auto const settings = get_settings();
 
     check(lib_status == LibStatus::Uninitialized);
-    check(recursion_count == 0);
+    // check(recursion_count == 0);
     lib_status = LibStatus::Initializing;
+
+    auto const settings = get_settings();
 
     fn_ptr.init(settings);
 
     // From here, we want to perform real allocation, but dont want to start tracing
     recursion_count = 1;
+
+    fprintf(stderr, "# PYTHIA INIT\n");
+    if (settings->record_allocations)
+        fprintf(stderr, "- Record allocations in %s\n", settings->allocations_file);
+    else
+        fprintf(stderr, "- Record allocations : NO\n");
+
+    switch (settings->mode) {
+        case Mode::Disabled: fprintf(stderr, "- Smart allocator is disabled\n"); break;
+        case Mode::Recording:
+            fprintf(stderr,
+                    "- Record and reduce trace in '%s%s'\n",
+                    settings->trace_file,
+                    settings->extension);
+            break;
+        case Mode::Predicting:
+            fprintf(stderr,
+                    "- Smart allocator enabled with trace '%s%s'\n",
+                    settings->trace_file,
+                    settings->extension);
+            break;
+    }
+
+    if (settings->mode == Mode::Disabled)
+        lib_status = LibStatus::Disabled;
+    else
+        lib_status = LibStatus::Initialized;
 
     fn_ptr.pthread_create =
             (int (*)(pthread_t *, pthread_attr_t const *, void * (*)(void *), void *))dlsym(
@@ -122,11 +150,6 @@ static void init() {
                     "pthread_create");
 
     Allocator::init(settings);
-
-    if (settings.mode == Mode::Disabled)
-        lib_status = LibStatus::Disabled;
-    else
-        lib_status = LibStatus::Initialized;
 
     recursion_count = 0;
 }
@@ -288,7 +311,7 @@ int pthread_create(pthread_t * thread,
         case LibStatus::Initialized: [[fallthrough]];
         case LibStatus::Terminated: {
             check(fn_ptr.pthread_create != nullptr);
-            fprintf(stderr, "#%d, pthread_create(...);\n", pythia_get_thread_num());
+            // fprintf(stderr, "#%d, pthread_create(...);\n", pythia_get_thread_num());
 
             auto const new_thread_num = pythia_new_thread_num();
             auto & thread_infos = new_threads_infos[new_thread_num];

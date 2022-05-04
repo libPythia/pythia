@@ -23,7 +23,9 @@ auto serialize(Terminal const * t, std::ostream & os) -> void {
 auto deserialize(std::istream & is, size_t size) -> void * {
     char buf[2048];
     check(size < 2048);
+    check(size > 0);
     is.read(buf, size);
+    buf[size] = 0;
     auto const e = new Event {};
     switch (buf[0]) {
         case 'A': {
@@ -40,7 +42,10 @@ auto deserialize(std::istream & is, size_t size) -> void * {
             e->operation = Operation::Reallocation;
             sscanf(buf + 1, "%lu->%lu", &e->orig, &e->dest);
         } break;
-        default: check(false); break;
+        default:
+            fprintf(stderr, "Unknown terminal descriptor : '%s'\n", buf);
+            check(false);
+            break;
     }
     return e;
 }

@@ -2,6 +2,7 @@
 
 #include <fcntl.h>
 #include <malloc.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -62,20 +63,26 @@ struct alignas(64) ThreadAllocator {
             case Operation::Deallocation: return infos.deallocate_terminal;
             case Operation::Reallocation: check(false);
         }
+        return nullptr;
     }
 };
 
 // Need to use pointers here because it could be reseted after first use by
 // static C++ object initializer
-static ThreadAllocator * threads_allocators[pythia_max_num_threads];
+
+static auto get_thread_allocators() -> ThreadAllocator ** {
+    static auto res = static_cast<ThreadAllocator **>(
+            malloc(pythia_max_num_threads * sizeof(ThreadAllocator *)));
+    return res;
+}
 
 // ---------------------------------------------------
 
 static auto get_thread_allocator() -> ThreadAllocator * {
     static thread_local auto const thread_allocator = []() -> ThreadAllocator * {
-        auto & allocator = threads_allocators[pythia_get_thread_num()];
-        check(allocator == nullptr);
-        allocator = new ThreadAllocator {};
+        auto & allocator = get_thread_allocators()[pythia_get_thread_num()];
+        if (allocator == nullptr)
+            allocator = new ThreadAllocator {};
         return allocator;
     }();
     return thread_allocator;
@@ -108,7 +115,7 @@ static auto record_for_prediction_allocation(size_t size) -> void {
 static auto is_an_allocation_about_to_occure(Prediction prediction,
                                              size_t size,
                                              int number_of_event_ahead) -> bool {
-    if (number_of_event_ahead > 0) {
+    if (number_of_event_ahead > 0 && prediction.estimation.size() > 0) {
         do {
             auto const terminal = get_terminal(prediction);
             auto const event = static_cast<Event const *>(terminal->payload);
@@ -127,49 +134,51 @@ static auto predict_on_deallocation(size_t size) -> bool {
     auto const alloc = get_thread_allocator();
     auto const terminal = alloc->get_terminal(size, Operation::Deallocation);
     alloc->estimation = next_estimation(alloc->estimation, terminal);
-    return is_an_allocation_about_to_occure(get_prediction_from_estimation(alloc->estimation),
-                                            size,
-                                            number_of_event_to_look_ahead);
+    auto const & prediction = get_prediction_from_estimation(alloc->estimation);
+    return is_an_allocation_about_to_occure(prediction, size, number_of_event_to_look_ahead);
 }
 
 // ---------------------------------------------------
 
-static auto get_file_path(Settings const & settings) -> std::string {
-    return std::string(settings.trace_file) + std::string(settings.extension);
+static auto get_file_path(Settings const * settings) -> std::string {
+    return std::string(settings->trace_file) + std::string(settings->extension);
 }
 
-static auto read_file(char const * path) -> std::stringstream {
-    fprintf(stderr, "Try to open file '%s'\n", path);
-
-    struct stat st;
-    stat(path, &st);
-    perror("Get stats about file");
-    fprintf(stderr, "File size : %ld\n", st.st_size);
-    auto buffer = std::vector<char>(st.st_size, 0);
-
-    auto const fd = open(path, O_RDONLY);
-    perror("Failed to open file");
-    read(fd, &buffer[0], st.st_size);
-    close(fd);
-
-    auto string = std::stringstream {};
-    string.rdbuf()->pubsetbuf(&buffer[0], st.st_size);
-
-    return string;
-}
-
-void Allocator::init(Settings const & settings) {
+void Allocator::init(Settings const * settings) {
     log_fn;
 
-    switch (settings.mode) {
+    switch (settings->mode) {
         case Mode::Predicting: {
             auto const alloc = get_thread_allocator();
             auto & grammar = alloc->grammar;
-            auto binary_trace = read_file(get_file_path(settings).c_str());
-            load_bin_file(grammar, binary_trace, deserialize);
+            auto const file_path = "pythia_allocator.btr";
+            auto file = std::ifstream {};
+            file.open(file_path, std::ifstream::binary);
+            check(file.is_open());
+            load_bin_file(grammar, file, deserialize);
             alloc->estimation = init_estimation_from_start(grammar);
             notify_allocation = &record_for_prediction_allocation;
             notify_deallocation = &predict_on_deallocation;
+
+            for (auto const & terminal : alloc->grammar.terminals) {
+                auto const event = static_cast<Event const *>(terminal->payload);
+                switch (event->operation) {
+                    case Operation::Allocation: {
+                        auto const size = event->dest;
+                        check(event->orig == 0);
+                        auto & infos = alloc->infos[size];
+                        infos.allocate_terminal = terminal.get();
+                    } break;
+
+                    case Operation::Deallocation: {
+                        auto const size = event->orig;
+                        check(event->dest == 0);
+                        auto & infos = alloc->infos[size];
+                        infos.deallocate_terminal = terminal.get();
+                    } break;
+                    case Operation::Reallocation: check(false); break;
+                }
+            }
         } break;
         case Mode::Recording: {
             auto const alloc = get_thread_allocator();
@@ -181,14 +190,14 @@ void Allocator::init(Settings const & settings) {
     }
 }
 
-auto Allocator::deinit(Settings const & settings) -> void {
+auto Allocator::deinit(Settings const * settings) -> void {
     log_fn;
 
-    if (settings.mode == Mode::Recording) {
+    if (settings->mode == Mode::Recording) {
         auto const num_threads = pythia_get_num_threads();
         // TODO export thread_num and save multiple traces
         for (auto i = 0; i < num_threads; ++i) {
-            if (threads_allocators[i] == nullptr) {
+            if (get_thread_allocators()[i] == nullptr) {
                 check(i != 0);
                 fprintf(stderr, "Thread %d was not used to allocate memory\n", i);
             } else {
@@ -278,7 +287,6 @@ auto Allocator::malloc(size_t size) -> void * {
 
 auto Allocator::realloc(void * ptr, size_t size) -> void * {
     log_fn;
-    fprintf(stderr, "REALLOC %p\n", ptr);
     if constexpr (enable_smart_allocator) {
         auto const prev_size = get_and_remove_size(ptr);
         auto const res = [&]() {

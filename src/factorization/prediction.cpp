@@ -1,5 +1,7 @@
 #include "prediction.hpp"
 
+#include <stdio.h>
+
 #include <cassert>
 
 // -------------------------------------------
@@ -106,12 +108,23 @@ auto next_estimation(Estimation estimation,
         }
     }
 
+#ifndef NDEBUG  // TODO remove
+    for (auto const & eval : res)
+        assert(eval.size() > 0);
+#endif
+
     return res;
 }
 
 // -------------------------------------------
 
-auto get_prediction_from_estimation(Estimation & e) -> Prediction { return Prediction { e, 0u }; }
+auto get_prediction_from_estimation(Estimation const & e) -> Prediction {
+#ifndef NDEBUG  // TODO remove
+    for (auto const & eval : e)
+        assert(eval.size() > 0);
+#endif
+    return Prediction { e, 0u };
+}
 
 auto get_first_next(Prediction * p) -> bool {
     assert(p->index < p->estimation.size());
@@ -127,8 +140,13 @@ auto get_alternative(Prediction * p) -> bool {
 }
 
 auto get_terminal(Prediction const & p) -> Terminal const * {
-    assert(p.index < p.estimation.size());
-    return as_terminal(p.estimation[p.index].back().node->maps_to);
+    if (p.index >= p.estimation.size())
+        return nullptr;
+    auto const & estimation = p.estimation[p.index];
+    assert(estimation.size() > 0);
+    auto const node = as_terminal(estimation.back().node->maps_to);
+    assert(node != nullptr);
+    return as_terminal(estimation.back().node->maps_to);
 }
 
 // -------------------------------------------
