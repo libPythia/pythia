@@ -27,9 +27,9 @@
 
 // ---------------------------------------------------
 
-static constexpr auto enable_smart_allocator = true;
 static auto constexpr minimum_allocation_size_to_take_care = 1024;
 static auto constexpr number_of_event_to_look_ahead = 10;
+static Mode mode;
 
 // ---------------------------------------------------
 
@@ -76,6 +76,17 @@ static auto get_thread_allocators() -> ThreadAllocator ** {
     return res;
 }
 
+static auto get_max_advance_for_prevision() -> size_t {
+    static auto res = [] {
+        auto i = static_cast<size_t>(10u);
+        auto const env = getenv("PYTHIA_ADVANCE");
+        if (env != nullptr)
+            sscanf(env, "%lu", &i);
+        return i;
+    }();
+    return res;
+}
+
 // ---------------------------------------------------
 
 static auto get_thread_allocator() -> ThreadAllocator * {
@@ -109,33 +120,52 @@ static auto record_deallocation(size_t size) -> bool {
 static auto record_for_prediction_allocation(size_t size) -> void {
     auto const alloc = get_thread_allocator();
     auto const terminal = alloc->get_terminal(size, Operation::Allocation);
+    fprintf(stderr, "Found no terminal for allocation of %lu bytes\n", size);
     alloc->estimation = next_estimation(alloc->estimation, terminal);
 }
 
 static auto is_an_allocation_about_to_occure(Prediction prediction,
                                              size_t size,
                                              int number_of_event_ahead) -> bool {
+    // fprintf(stderr, "%d steps remaining\n", number_of_event_ahead);
+    // fprintf(stderr, "estimation size : %lu\n", prediction.estimation.size());
     if (number_of_event_ahead > 0 && prediction.estimation.size() > 0) {
         do {
             auto const terminal = get_terminal(prediction);
             auto const event = static_cast<Event const *>(terminal->payload);
-            if (event->operation == Operation::Allocation)  // TODO condition on size
+            switch (event->operation) {
+                case Operation::Allocation: fprintf(stderr, "Observe allocation\n"); break;
+                case Operation::Deallocation: fprintf(stderr, "Observe deallocation\n"); break;
+            }
+            if (event->operation == Operation::Allocation) {  // TODO condition on size
+                fprintf(stderr, "Found allocation\n");
                 return true;
+            }
             auto next_prediction = prediction;
             get_first_next(&prediction);
-            if (is_an_allocation_about_to_occure(next_prediction, size, number_of_event_ahead - 1))
+            if (is_an_allocation_about_to_occure(std::move(next_prediction),
+                                                 size,
+                                                 number_of_event_ahead - 1)) {
                 return true;
+            }
         } while (get_alternative(&prediction));
     }
+    fprintf(stderr, "Found no allocation\n");
     return false;
 }
 
 static auto predict_on_deallocation(size_t size) -> bool {
     auto const alloc = get_thread_allocator();
     auto const terminal = alloc->get_terminal(size, Operation::Deallocation);
+    if (terminal == nullptr)
+        fprintf(stderr, "Found no terminal for deallocation of %lu bytes\n", size);
     alloc->estimation = next_estimation(alloc->estimation, terminal);
+    // fprintf(stderr, "Correspondance estimation size = %lu\n", alloc->estimation.size());
     auto const & prediction = get_prediction_from_estimation(alloc->estimation);
-    return is_an_allocation_about_to_occure(prediction, size, number_of_event_to_look_ahead);
+    // fprintf(stderr, "Start Predicting :\n");
+    return is_an_allocation_about_to_occure(std::move(prediction),
+                                            size,
+                                            get_max_advance_for_prevision());
 }
 
 // ---------------------------------------------------
@@ -146,6 +176,8 @@ static auto get_file_path(Settings const * settings) -> std::string {
 
 void Allocator::init(Settings const * settings) {
     log_fn;
+
+    mode = settings->mode;
 
     switch (settings->mode) {
         case Mode::Predicting: {
@@ -232,8 +264,14 @@ static auto internal_malloc(size_t size) -> void * {
 
 static auto internal_free(void * ptr, size_t size) -> void {
     log_fn;
-    notify_deallocation(size);
-    get_thread_allocator()->infos[size].reserve.push_back(ptr);
+    if (notify_deallocation(size)) {
+        fprintf(stderr, "Keep for later\n");
+        get_thread_allocator()->infos[size].reserve.push_back(ptr);
+
+    } else {
+        fprintf(stderr, "Free\n");
+        fn_ptr._free(ptr);
+    }
 }
 
 static auto internal_realloc(void * ptr, size_t prev_size, size_t size) -> void * {
@@ -273,7 +311,7 @@ static auto get_and_remove_size(void * ptr) -> size_t {
 
 auto Allocator::malloc(size_t size) -> void * {
     log_fn;
-    if constexpr (enable_smart_allocator) {
+    if (mode != Mode::Disabled) {
         auto const ptr = [&]() {
             if (size < minimum_allocation_size_to_take_care)
                 return fn_ptr.malloc(size);
@@ -287,7 +325,7 @@ auto Allocator::malloc(size_t size) -> void * {
 
 auto Allocator::realloc(void * ptr, size_t size) -> void * {
     log_fn;
-    if constexpr (enable_smart_allocator) {
+    if (mode != Mode::Disabled) {
         auto const prev_size = get_and_remove_size(ptr);
         auto const res = [&]() {
             if (std::max(size, prev_size) < minimum_allocation_size_to_take_care)
@@ -302,7 +340,7 @@ auto Allocator::realloc(void * ptr, size_t size) -> void * {
 
 auto Allocator::calloc(size_t nmemb, size_t size) -> void * {
     log_fn;
-    if constexpr (enable_smart_allocator) {
+    if (mode != Mode::Disabled) {
         auto const ptr = [&]() {
             if (nmemb * size >= minimum_allocation_size_to_take_care)
                 return internal_calloc(nmemb, size);
@@ -316,7 +354,7 @@ auto Allocator::calloc(size_t nmemb, size_t size) -> void * {
 
 auto Allocator::free(void * ptr) -> void {
     log_fn;
-    if constexpr (enable_smart_allocator) {
+    if (mode != Mode::Disabled) {
         auto const size = get_and_remove_size(ptr);
         if (size >= minimum_allocation_size_to_take_care) {
             internal_free(ptr, size);

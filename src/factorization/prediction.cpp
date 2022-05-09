@@ -97,6 +97,7 @@ auto next_estimation(Estimation estimation,
     }
 
     if (loose_knowledge) {
+        fprintf(stderr, "Lost knowledge\n");
         auto eval = Evaluation {};
         for (auto const parent : terminal->occurrences_without_successor) {
             eval.push_back(EvaluationNode { parent, 1 });
@@ -108,10 +109,10 @@ auto next_estimation(Estimation estimation,
         }
     }
 
-#ifndef NDEBUG  // TODO remove
-    for (auto const & eval : res)
-        assert(eval.size() > 0);
-#endif
+    fprintf(stderr,
+            "Last estimation was of size %lu and new one is of size %lu\n",
+            estimation.size(),
+            res.size());
 
     return res;
 }
