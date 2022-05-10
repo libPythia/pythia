@@ -91,6 +91,9 @@ auto main(int argc, char ** argv) -> int {
     auto print_terminal = [](Terminal const * t, std::ostream & os) {
         os << Data::get_printable_data(t);
     };
+    auto print_terminal_ln = [](Terminal const * t, std::ostream & os) {
+        os << Data::get_printable_data(t) << std::endl;
+    };
 
     auto print_input = [&](NonTerminal const * nt) {
         if (settings.print_input) {
@@ -110,6 +113,12 @@ auto main(int argc, char ** argv) -> int {
             for (auto const thread : input.threads) {
                 print_input(thread);
                 print_trace(thread, std::cout, print_terminal);
+            }
+        } break;
+        case output_t::expend_lines: {
+            for (auto const thread : input.threads) {
+                print_input(thread);
+                print_trace(thread, std::cout, print_terminal_ln);
             }
         } break;
         case output_t::grammar:

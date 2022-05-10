@@ -43,6 +43,7 @@ static auto print_help() -> void {
     eta::print_option('g', "grammar", "Format output as a grammar.");
     eta::print_option('B', "binary-output", "Use binary format for output");
     eta::print_option('e', "expend", "Print original input");
+    eta::print_option('E', "expend-lines", "Print original input, one element per line");
     eta::print_option('t', "tree", "Produce output as tree");
     eta::print_option('T', "terminals", "Print used terminals");
     eta::print_option(0, "no-color", "Don't use color and formating in output.");
@@ -89,6 +90,7 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     auto & binary_output_opt = parser["binary-output"].abbreviation('B');
     auto & no_color_opt = parser["no-color"];
     auto & expend_opt = parser["expend"].abbreviation('e');
+    auto & expend_lines_opt = parser["expend-lines"].abbreviation('E');
     auto & tree_opt = parser["tree"].abbreviation('t');
     auto & terminals_opt = parser["terminals"].abbreviation('T');
 #ifdef ETA_GUI_ENABLED
@@ -120,6 +122,7 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
     auto const grammar = grammar_opt.was_set();
     auto const binary_output = binary_output_opt.was_set();
     auto const expend = expend_opt.was_set();
+    auto const expend_lines = expend_lines_opt.was_set();
     auto const tree = tree_opt.was_set();
     auto const terminals = terminals_opt.was_set();
 #ifdef ETA_GUI_ENABLED
@@ -179,11 +182,11 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
 
     // output settings
 
-    if (count_bools(dot, grammar, expend, binary_output, terminals, tree, gui) > 1) {
+    if (count_bools(dot, grammar, expend, expend_lines, binary_output, terminals, tree, gui) > 1) {
         set_color(std::cerr, eta::color_t::red);
         std::cerr << "error: ";
         set_color(std::cerr, eta::color_t::standard);
-        std::cerr << "--dot, --expend, --grammar, --tree, --terminals"
+        std::cerr << "--dot, --expend, --expend_lines, --grammar, --tree, --terminals"
 #ifdef ETA_GUI_ENABLED
                      ", --gui"
 #endif
@@ -204,6 +207,8 @@ auto parse_settings(int argc, char ** argv) -> settings_t {
         settings.output_mode = output_t::binary;
     else if (expend)
         settings.output_mode = output_t::expend;
+    else if (expend_lines)
+        settings.output_mode = output_t::expend_lines;
     else if (tree)
         settings.output_mode = output_t::tree;
     else if (terminals)

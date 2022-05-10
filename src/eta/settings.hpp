@@ -23,6 +23,7 @@ enum class output_t {
     grammar,
     binary,
     expend,
+    expend_lines,
     terminals,
     tree,
 #ifdef ETA_GUI_ENABLED
