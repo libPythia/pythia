@@ -102,8 +102,7 @@ auto main(int argc, char ** argv) -> int {
     };
 
     switch (settings.output_mode) {
-        case output_t::binary: break;
-
+        case output_t::binary: print_bin_file(input.grammar, std::cout, print_terminal); break;
         case output_t::dot: {
             print_dot_file(input.grammar, std::cout, print_terminal, settings.print_input);
         } break;
