@@ -11,8 +11,6 @@ install_subdir('include/eta', install_dir:get_option('includedir'))
 
 thread_dep = dependency('threads')
 
-mpi = dependency('mpi', language: 'c')
-
 cc = meson.get_compiler('c')
 dl_dep = cc.find_library('dl', required : true) 
 
@@ -65,17 +63,6 @@ eta_allocator = library('eta_allocator',
     install:true)
 
 eta_test_allocator = executable('eta_test_allocator', 'test/test_allocator.cpp')
-
-#----------------------------------------------------------------
-
-eta_mpi = library('eta_mpi',
-  [
-    'src/mpi/common.cpp',
-    'src/mpi/mpi.cpp',
-    'src/mpi/mpif.cpp',
-  ],
-  dependencies:[eta_factorizer_dep, dl_dep],
-  install:true)
 
 #----------------------------------------------------------------
 
