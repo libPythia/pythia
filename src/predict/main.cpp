@@ -59,7 +59,7 @@ auto main(int argc, char ** argv) -> int {
         } while (get_alternative(&p));
     };
     auto prediction = get_prediction_from_estimation(estimation);
-    if (prediction.index < prediction.estimation.size())
+    if (prediction.infos.size() > 0)
         dig_in_futur(std::move(prediction), 0u, dig_in_futur);
     else
         std::cout << "No prediction is available" << std::endl;

@@ -30,8 +30,12 @@ auto next_estimation(Estimation estimation,
 // --------------------------------------------------
 
 struct Prediction {
+    struct info_t {
+        size_t index;
+        size_t prevalence;
+    };
     Estimation estimation;
-    unsigned int index;
+    std::vector<info_t> infos;
 };
 auto get_prediction_from_estimation(Estimation const & e) -> Prediction;
 auto get_first_next(Prediction *) -> bool;

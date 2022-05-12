@@ -1,5 +1,6 @@
 #include "prediction.hpp"
 
+#include <algorithm>
 #include <cassert>
 
 // -------------------------------------------
@@ -40,6 +41,31 @@ static auto next_evaluation_ascend(NonTerminal const * nt, F && add_evaluation) 
         aux(parent);
     for (auto const & [_, parent] : nt->occurrences_with_successor)
         aux(parent);
+}
+
+// -------------------------------------------
+
+static auto compute_prevalence(Evaluation const & e) -> size_t {
+    auto const get_nonterminal = [](GrammarNode const * node) {
+        while (is_node(node->next))
+            node = as_node(node->next);
+        return as_nonterminal(node->next);
+    };
+
+    auto const aux = [&](GrammarNode const * node, auto rec, auto rem) -> size_t {
+        auto const nt = get_nonterminal(node);
+        auto nt_count = [&]() {
+            auto c = 0u;
+            for (auto const & parent : nt->occurrences_without_successor)
+                c += rec(parent, rec, 0);
+            for (auto const & [_, parent] : nt->occurrences_with_successor)
+                c += rec(parent, rec, 0);
+            return c == 0u ? 1u : c;
+        }();
+        return (node->repeats - rem) * nt_count;
+    };
+
+    return aux(e.front().node, aux, e.front().repeats);
 }
 
 // -------------------------------------------
@@ -117,34 +143,44 @@ auto next_estimation(Estimation estimation,
 
 // -------------------------------------------
 
+static auto compute_infos(Estimation const & estimation) -> std::vector<Prediction::info_t> {
+    auto res = std::vector<Prediction::info_t> {};
+    res.reserve(estimation.size());
+    for (auto i = 0u; i < estimation.size(); ++i)
+        res.push_back({ i, compute_prevalence(estimation[i]) });
+    std::sort(res.begin(), res.end(), [](auto const & lhs, auto const & rhs) {
+        return lhs.prevalence > rhs.prevalence;
+    });
+    return res;
+}
+
 auto get_prediction_from_estimation(Estimation const & e) -> Prediction {
-#ifndef NDEBUG  // TODO remove
-    for (auto const & eval : e)
-        assert(eval.size() > 0);
-#endif
-    return Prediction { e, 0u };
+    return Prediction { e, compute_infos(e) };
 }
 
 auto get_first_next(Prediction * p) -> bool {
-    assert(p->index < p->estimation.size());
-    auto last_estimation = std::move(p->estimation[p->index]);
+    assert(p->infos.size() > 0);
+    auto last_estimation = std::move(p->estimation[p->infos.back().index]);
     p->estimation.clear();
+    p->infos.clear();
     next_evaluation(last_estimation, [p](auto e) {
         assert(e.size() > 0);
         p->estimation.push_back(std::move(e));
     });
-    p->index = 0;
-    return p->index < p->estimation.size();
+    if (p->estimation.size() == 0)
+        return false;
+    p->infos = compute_infos(p->estimation);
+    return true;
 }
 
 auto get_alternative(Prediction * p) -> bool {
-    ++p->index;
-    return p->index < p->estimation.size();
+    p->infos.pop_back();
+    return p->infos.size() > 0;
 }
 
 auto get_terminal(Prediction const & p) -> Terminal const * {
-    assert(p.index < p.estimation.size());
-    auto const & estimation = p.estimation[p.index];
+    assert(p.infos.size() > 0);
+    auto const & estimation = p.estimation[p.infos.back().index];
     assert(estimation.size() > 0);
     auto const node = as_terminal(estimation.back().node->maps_to);
     assert(node != nullptr);
@@ -153,29 +189,4 @@ auto get_terminal(Prediction const & p) -> Terminal const * {
 
 // -------------------------------------------
 
-static auto get_prevalence(Evaluation const & e) -> size_t {
-    auto const get_nonterminal = [](GrammarNode const * node) {
-        while (is_node(node->next))
-            node = as_node(node->next);
-        return as_nonterminal(node->next);
-    };
-
-    auto const aux = [&](GrammarNode const * node, auto rec, auto rem) -> size_t {
-        auto const nt = get_nonterminal(node);
-        auto nt_count = [&]() {
-            auto c = 0u;
-            for (auto const & parent : nt->occurrences_without_successor)
-                c += rec(parent, rec, 0);
-            for (auto const & [_, parent] : nt->occurrences_with_successor)
-                c += rec(parent, rec, 0);
-            return c == 0u ? 1u : c;
-        }();
-        return (node->repeats - rem) * nt_count;
-    };
-
-    return aux(e.front().node, aux, e.front().repeats);
-}
-
-auto get_prevalence(Prediction const & p) -> size_t {
-    return get_prevalence(p.estimation[p.index]);
-}
+auto get_prevalence(Prediction const & p) -> size_t { return p.infos.back().prevalence; }
