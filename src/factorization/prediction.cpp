@@ -117,24 +117,26 @@ auto next_estimation(Estimation estimation,
                      Terminal const * terminal,
                      TerminalEqualityOperator terminals_are_equivalents) -> Estimation {
     auto res = std::vector<Evaluation> {};
-    bool loose_knowledge = true;
-    for (auto & eval : estimation) {
-        auto const eval_terminal = as_terminal(eval.back().node->maps_to);
-        if (terminals_are_equivalents(terminal, eval_terminal)) {
-            loose_knowledge = false;
-            next_evaluation(std::move(eval), [&res](auto e) { res.push_back(std::move(e)); });
+    if (terminal != nullptr) {
+        bool loose_knowledge = true;
+        for (auto & eval : estimation) {
+            auto const eval_terminal = as_terminal(eval.back().node->maps_to);
+            if (terminals_are_equivalents(terminal, eval_terminal)) {
+                loose_knowledge = false;
+                next_evaluation(std::move(eval), [&res](auto e) { res.push_back(std::move(e)); });
+            }
         }
-    }
 
-    if (loose_knowledge) {
-        auto eval = Evaluation {};
-        for (auto const parent : terminal->occurrences_without_successor) {
-            eval.push_back(EvaluationNode { parent, 1 });
-            next_evaluation(std::move(eval), [&res](auto e) { res.push_back(std::move(e)); });
-        }
-        for (auto const & [_, parent] : terminal->occurrences_with_successor) {
-            eval.push_back(EvaluationNode { parent, 1 });
-            next_evaluation(std::move(eval), [&res](auto e) { res.push_back(std::move(e)); });
+        if (loose_knowledge) {
+            auto eval = Evaluation {};
+            for (auto const parent : terminal->occurrences_without_successor) {
+                eval.push_back(EvaluationNode { parent, 1 });
+                next_evaluation(std::move(eval), [&res](auto e) { res.push_back(std::move(e)); });
+            }
+            for (auto const & [_, parent] : terminal->occurrences_with_successor) {
+                eval.push_back(EvaluationNode { parent, 1 });
+                next_evaluation(std::move(eval), [&res](auto e) { res.push_back(std::move(e)); });
+            }
         }
     }
 
