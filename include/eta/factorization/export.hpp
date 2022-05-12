@@ -7,6 +7,7 @@
 #include "reduction.hpp"
 
 using terminal_printer = std::function<void(Terminal const *, std::ostream &)>;
+using symbol_printer = std::function<void(Symbol const *, std::ostream &)>;
 
 auto linearise_grammar(NonTerminal const *) -> std::vector<Terminal const *>;
 auto print_trace(NonTerminal const *, std::ostream &, terminal_printer const &) -> void;

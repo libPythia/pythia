@@ -1,7 +1,5 @@
 #include "prediction.hpp"
 
-#include <stdio.h>
-
 #include <cassert>
 
 // -------------------------------------------
@@ -22,19 +20,25 @@ static auto descend_evaluation(Evaluation & eval) -> void {
 }
 
 template <typename F>
-static auto next_evaluation_ascend(Symbol const * symbol, F && add_evaluation) -> void {
+static auto next_evaluation_ascend(NonTerminal const * nt, F && add_evaluation) -> void {
     auto aux = [&add_evaluation](GrammarNode const * node) {
+        if (node->repeats > 1) {
+            auto eval = Evaluation { EvaluationNode { node, 1 } };
+            descend_evaluation(eval);
+            add_evaluation(std::move(eval));
+        }
+
         if (is_node(node->next)) {
             auto eval = Evaluation { EvaluationNode { as_node(node->next), 0 } };
             descend_evaluation(eval);
             add_evaluation(std::move(eval));
         } else {
-            next_evaluation_ascend(as_symbol(node->next), add_evaluation);
+            next_evaluation_ascend(as_nonterminal(node->next), add_evaluation);
         }
     };
-    for (auto const & parent : symbol->occurrences_without_successor)
+    for (auto const & parent : nt->occurrences_without_successor)
         aux(parent);
-    for (auto const & [_, parent] : symbol->occurrences_with_successor)
+    for (auto const & [_, parent] : nt->occurrences_with_successor)
         aux(parent);
 }
 
@@ -75,7 +79,7 @@ template <typename F> static auto next_evaluation(Evaluation eval, F && add_eval
             add_evaluation(std::move(eval));
             break;
         } else if (eval.size() == 1) {  // top of eval reached : gain knowledge by exploring parents
-            next_evaluation_ascend(as_symbol(next_object), add_evaluation);
+            next_evaluation_ascend(as_nonterminal(next_object), add_evaluation);
             break;
         } else {
             eval.pop_back();  // use existing knowledge in order to find non trivial next
@@ -97,7 +101,6 @@ auto next_estimation(Estimation estimation,
     }
 
     if (loose_knowledge) {
-        fprintf(stderr, "Lost knowledge\n");
         auto eval = Evaluation {};
         for (auto const parent : terminal->occurrences_without_successor) {
             eval.push_back(EvaluationNode { parent, 1 });
@@ -108,11 +111,6 @@ auto next_estimation(Estimation estimation,
             next_evaluation(std::move(eval), [&res](auto e) { res.push_back(std::move(e)); });
         }
     }
-
-    fprintf(stderr,
-            "Last estimation was of size %lu and new one is of size %lu\n",
-            estimation.size(),
-            res.size());
 
     return res;
 }
@@ -131,8 +129,12 @@ auto get_first_next(Prediction * p) -> bool {
     assert(p->index < p->estimation.size());
     auto last_estimation = std::move(p->estimation[p->index]);
     p->estimation.clear();
-    next_evaluation(last_estimation, [p](auto e) { p->estimation.push_back(std::move(e)); });
-    return p->estimation.size() > 0;
+    next_evaluation(last_estimation, [p](auto e) {
+        assert(e.size() > 0);
+        p->estimation.push_back(std::move(e));
+    });
+    p->index = 0;
+    return p->index < p->estimation.size();
 }
 
 auto get_alternative(Prediction * p) -> bool {
@@ -141,8 +143,7 @@ auto get_alternative(Prediction * p) -> bool {
 }
 
 auto get_terminal(Prediction const & p) -> Terminal const * {
-    if (p.index >= p.estimation.size())
-        return nullptr;
+    assert(p.index < p.estimation.size());
     auto const & estimation = p.estimation[p.index];
     assert(estimation.size() > 0);
     auto const node = as_terminal(estimation.back().node->maps_to);

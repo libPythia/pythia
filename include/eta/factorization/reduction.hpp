@@ -121,6 +121,9 @@ struct Grammar {
 
 auto new_terminal(Grammar & g, void * payload) -> Terminal *;
 auto insertSymbol(Grammar & g, NonTerminal * nt, Terminal * t) -> NonTerminal *;
+inline auto append_terminal(Grammar & g, NonTerminal * nt, Terminal * t) -> NonTerminal * {
+    return insertSymbol(g, nt, t);
+}
 
 // ----------------------------------------------------------
 

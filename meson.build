@@ -82,6 +82,16 @@ eta_exe = executable('eta_reduce',
 
 #----------------------------------------------------------------
 
+eta_predict = executable('eta_predict',
+  [
+    'src/predict/main.cpp',
+  ],
+  dependencies: [eta_factorizer_dep],
+  install_rpath:get_option('prefix')/get_option('libdir'),
+  install:false)
+
+#----------------------------------------------------------------
+
 # pkgconfig export
 pkgc.generate(eta_factorizer_lib,
   name: 'eta_factorizer',
