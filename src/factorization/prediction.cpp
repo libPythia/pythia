@@ -152,3 +152,30 @@ auto get_terminal(Prediction const & p) -> Terminal const * {
 }
 
 // -------------------------------------------
+
+static auto get_prevalence(Evaluation const & e) -> size_t {
+    auto const get_nonterminal = [](GrammarNode const * node) {
+        while (is_node(node->next))
+            node = as_node(node->next);
+        return as_nonterminal(node->next);
+    };
+
+    auto const aux = [&](GrammarNode const * node, auto rec, auto rem) -> size_t {
+        auto const nt = get_nonterminal(node);
+        auto nt_count = [&]() {
+            auto c = 0u;
+            for (auto const & parent : nt->occurrences_without_successor)
+                c += rec(parent, rec, 0);
+            for (auto const & [_, parent] : nt->occurrences_with_successor)
+                c += rec(parent, rec, 0);
+            return c == 0u ? 1u : c;
+        }();
+        return (node->repeats - rem) * nt_count;
+    };
+
+    return aux(e.front().node, aux, e.front().repeats);
+}
+
+auto get_prevalence(Prediction const & p) -> size_t {
+    return get_prevalence(p.estimation[p.index]);
+}

@@ -40,14 +40,7 @@ auto get_terminal(Prediction const &) -> Terminal const *;
 
 // --------------------------------------------------
 
-struct Probability {
-    size_t count;
-    size_t total;
-
-    auto as_double() const { return static_cast<double>(count) / static_cast<double>(total); };
-};
-
-auto get_probability(Estimation const & estimation) -> Probability;
+auto get_prevalence(Prediction const & p) -> size_t;
 
 // --------------------------------------------------
 

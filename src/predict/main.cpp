@@ -52,7 +52,7 @@ auto main(int argc, char ** argv) -> int {
                 std::cout << "    ";
             std::cout << " - ";
             print_terminal(get_terminal(p), std::cout);
-            std::cout << std::endl;
+            std::cout << " (" << get_prevalence(p) << ")\n";
             auto np = p;
             if (get_first_next(&np))
                 rec(std::move(np), depth + 1, rec);
