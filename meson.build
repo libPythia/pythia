@@ -27,10 +27,10 @@ eta_factorizer_src = [
     'src/factorization/reduction.cpp',
 ]
 
-eta_factorizer_lib = static_library('eta_factorizer',
-                               eta_factorizer_src,
-                               include_directories:['include/eta/factorization'],
-                               install:true)
+eta_factorizer_lib = library('eta_factorizer',
+                             eta_factorizer_src,
+                             include_directories:['include/eta/factorization'],
+                             install:true)
 
 eta_factorizer_dep = declare_dependency(include_directories:['include'],
                                    link_with:[eta_factorizer_lib])
